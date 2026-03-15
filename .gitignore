@@ -1,0 +1,21 @@
+# Environment
+.env
+.envrc
+.direnv/
+
+# Go
+api/studio-analytics
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker
+docker-compose.override.yml
+
+# Build
+tmp/

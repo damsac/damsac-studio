@@ -1,0 +1,27 @@
+{{define "event_detail"}}
+<div class="detail-panel">
+    <div class="detail-header">
+        <span class="detail-id">{{.ID}}</span>
+        <span class="detail-time">{{.FormattedTime}}</span>
+    </div>
+    <div class="detail-grid">
+        <div class="detail-section">
+            <h4>event</h4>
+            <dl>
+                <dt>app_id</dt><dd>{{.AppID}}</dd>
+                <dt>event</dt><dd>{{.EventName}}</dd>
+                <dt>timestamp</dt><dd>{{.Timestamp}}</dd>
+                <dt>created_at</dt><dd>{{.CreatedAt}}</dd>
+            </dl>
+        </div>
+        <div class="detail-section">
+            <h4>properties</h4>
+            <pre class="json-block">{{.PropertiesFormatted}}</pre>
+        </div>
+        <div class="detail-section">
+            <h4>context</h4>
+            <pre class="json-block">{{.ContextFormatted}}</pre>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,56 @@
+{{define "content"}}
+<div class="events-page">
+    <div class="filters">
+        <form hx-get="/dashboard/events" hx-target="#events-table" hx-push-url="false">
+            <select name="app_id">
+                <option value="">all apps</option>
+                {{range .AppIDs}}
+                <option value="{{.}}" {{if eq . $.ActiveAppID}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+            <select name="event">
+                <option value="">all events</option>
+                {{range .EventTypes}}
+                <option value="{{.}}" {{if eq . $.ActiveEvent}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+            <input type="datetime-local" name="from" value="{{.ActiveFrom}}" placeholder="from">
+            <input type="datetime-local" name="to" value="{{.ActiveTo}}" placeholder="to">
+            <button type="submit">apply</button>
+        </form>
+    </div>
+
+    <div id="events-table">
+        {{template "events_table" .}}
+    </div>
+</div>
+{{end}}
+
+{{define "events_table"}}
+<div class="table-wrap" hx-ext="sse" sse-connect="/dashboard/events/stream">
+    <table>
+        <thead>
+            <tr>
+                <th>timestamp</th>
+                <th>app</th>
+                <th>event</th>
+                <th>properties</th>
+            </tr>
+        </thead>
+        <tbody id="events-body" sse-swap="new-events" hx-swap="afterbegin">
+            {{range .Events}}
+            {{template "event_row" .}}
+            {{end}}
+        </tbody>
+    </table>
+</div>
+<div class="pagination">
+    {{if gt .Page 1}}
+    <a hx-get="/dashboard/events?page={{.PrevPage}}{{.FilterQuery}}" hx-target="#events-table" class="page-link">&larr; newer</a>
+    {{end}}
+    <span class="page-info">page {{.Page}}</span>
+    {{if .HasMore}}
+    <a hx-get="/dashboard/events?page={{.NextPage}}{{.FilterQuery}}" hx-target="#events-table" class="page-link">older &rarr;</a>
+    {{end}}
+</div>
+{{end}}

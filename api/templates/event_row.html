@@ -1,0 +1,11 @@
+{{define "event_row"}}
+<tr class="event-row" hx-get="/dashboard/events/{{.ID}}" hx-target="next .event-detail" hx-swap="innerHTML">
+    <td class="ts">{{.FormattedTime}}</td>
+    <td class="app">{{.AppID}}</td>
+    <td class="evt"><span class="event-badge">{{.EventName}}</span></td>
+    <td class="props">{{.PropertiesPreview}}</td>
+</tr>
+<tr>
+    <td colspan="4" class="event-detail"></td>
+</tr>
+{{end}}

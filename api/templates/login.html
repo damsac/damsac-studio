@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>damsac studio - login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <h1 class="login-title">damsac studio</h1>
+        {{if .Error}}
+        <div class="login-error">{{.Error}}</div>
+        {{end}}
+        <form method="POST" action="/dashboard/login" class="login-form">
+            <input type="password" name="password" placeholder="password" autofocus required>
+            <button type="submit">sign in</button>
+        </form>
+    </div>
+</body>
+</html>

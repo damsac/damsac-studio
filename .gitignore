@@ -4,6 +4,7 @@
 .direnv/
 
 # Go
+api/api
 api/studio-analytics
 
 # macOS
@@ -14,8 +15,12 @@ api/studio-analytics
 .vscode/
 *.swp
 
-# Docker
-docker-compose.override.yml
+# Nix
+result
+
+# Swift
+sdk/swift/.build/
 
 # Build
 tmp/
+.claude/

@@ -52,8 +52,7 @@ final class Session: @unchecked Sendable {
     /// Must be called while holding the lock.
     private func shouldStartNewSession(now: Date) -> Bool {
         // No session yet
-        guard let sessionId = _sessionId else { return true }
-        _ = sessionId
+        guard _sessionId != nil else { return true }
 
         // Inactivity timeout
         if let lastActivity = _lastActivityTime,

@@ -24,6 +24,17 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+// isValidRFC3339 checks whether s is a valid RFC3339 timestamp, with or
+// without fractional seconds. Go's time.RFC3339 rejects fractional seconds,
+// so we also try time.RFC3339Nano.
+func isValidRFC3339(s string) bool {
+	if _, err := time.Parse(time.RFC3339, s); err == nil {
+		return true
+	}
+	_, err := time.Parse(time.RFC3339Nano, s)
+	return err == nil
+}
+
 // maxBodySize is the maximum allowed request body size (1 MB).
 const maxBodySize = 1 << 20
 
@@ -103,7 +114,7 @@ func (h *IngestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("events[%d]: missing required field 'timestamp'", i), "VALIDATION_ERROR")
 			return
 		}
-		if _, err := time.Parse(time.RFC3339, e.Timestamp); err != nil {
+		if !isValidRFC3339(e.Timestamp) {
 			writeError(w, http.StatusBadRequest,
 				fmt.Sprintf("events[%d]: invalid timestamp (must be RFC3339)", i), "VALIDATION_ERROR")
 			return

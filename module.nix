@@ -55,6 +55,17 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = cfg.dashboardPasswordFile != null;
+        message = "services.damsac-studio.dashboardPasswordFile must be set to a file path containing the dashboard password.";
+      }
+      {
+        assertion = cfg.apiKeys != [ ];
+        message = "services.damsac-studio.apiKeys must contain at least one \"key:app_id\" entry.";
+      }
+    ];
+
     systemd.services.damsac-studio = {
       description = "damsac-studio analytics server";
       wantedBy = [ "multi-user.target" ];

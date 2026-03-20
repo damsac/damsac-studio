@@ -73,7 +73,7 @@ final class DeviceContext: @unchecked Sendable {
     /// IDFV hashed with SHA-256, salted with appId.
     /// Returns nil in contexts where IDFV is unavailable (e.g., app extensions, tests).
     private func hashedDeviceId() -> String? {
-        #if canImport(UIKit) && !targetEnvironment(simulator) || canImport(UIKit) && targetEnvironment(simulator)
+        #if canImport(UIKit)
         guard let idfv = UIDevice.current.identifierForVendor?.uuidString else {
             return nil
         }

@@ -133,12 +133,16 @@ final class EventQueue: @unchecked Sendable {
                 if let filename { persistence.deleteBatch(filename: filename) }
 
             case .serverError, .networkError, .circuitOpen:
-                // Keep events for retry -- they're persisted on disk
-                lock.lock()
-                if _events.count >= batchSize {
-                    _events.removeFirst(batchSize)
+                // Events are persisted on disk for retry. Remove from memory
+                // only if persistence succeeded; otherwise keep them in memory
+                // so they aren't lost.
+                if filename != nil {
+                    lock.lock()
+                    if _events.count >= batchSize {
+                        _events.removeFirst(batchSize)
+                    }
+                    lock.unlock()
                 }
-                lock.unlock()
                 return // Stop flushing on error
             }
         }

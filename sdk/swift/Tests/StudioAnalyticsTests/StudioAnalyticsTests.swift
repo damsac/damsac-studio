@@ -1,6 +1,10 @@
 import XCTest
 @testable import StudioAnalytics
 
+private func jsonData(_ dict: [String: Any]) -> Data {
+    (try? JSONSerialization.data(withJSONObject: dict)) ?? Data("{}".utf8)
+}
+
 final class EventSerializationTests: XCTestCase {
 
     func testEventToJSON() {
@@ -11,7 +15,7 @@ final class EventSerializationTests: XCTestCase {
             appId: "test-app",
             event: "test.event",
             timestamp: date,
-            properties: ["key": "value", "count": 42],
+            properties: jsonData(["key": "value", "count": 42]),
             context: ["sdk_version": "0.1.0"]
         )
 
@@ -38,7 +42,7 @@ final class EventSerializationTests: XCTestCase {
             appId: "test-app",
             event: "llm.request",
             timestamp: date,
-            properties: ["tokens_in": 100, "tokens_out": 50, "model": "test-model"],
+            properties: jsonData(["tokens_in": 100, "tokens_out": 50, "model": "test-model"]),
             context: ["app_version": "1.0.0"]
         )
 
@@ -50,7 +54,8 @@ final class EventSerializationTests: XCTestCase {
         XCTAssertEqual(restored?.appId, "test-app")
         XCTAssertEqual(restored?.event, "llm.request")
 
-        let props = restored?.properties
+        let restoredJSON = restored?.toJSON()
+        let props = restoredJSON?["properties"] as? [String: Any]
         XCTAssertEqual(props?["tokens_in"] as? Int, 100)
         XCTAssertEqual(props?["tokens_out"] as? Int, 50)
         XCTAssertEqual(props?["model"] as? String, "test-model")
@@ -60,7 +65,7 @@ final class EventSerializationTests: XCTestCase {
         let event = Event(
             appId: "test-app",
             event: "test.event",
-            properties: ["key": "value"]
+            properties: jsonData(["key": "value"])
         )
 
         let data = event.toJSONData()
@@ -76,8 +81,8 @@ final class EventSerializationTests: XCTestCase {
 
     func testBatchSerialization() {
         let events = [
-            Event(appId: "app", event: "event1", properties: [:]),
-            Event(appId: "app", event: "event2", properties: ["x": 1])
+            Event(appId: "app", event: "event1"),
+            Event(appId: "app", event: "event2", properties: jsonData(["x": 1]))
         ]
 
         let batchJSON = events.toBatchJSON()
@@ -139,7 +144,7 @@ final class EventSerializationTests: XCTestCase {
         let event = Event(
             appId: "murmur-ios",
             event: "llm.request",
-            properties: props,
+            properties: jsonData(props),
             context: [:]
         )
 
@@ -195,8 +200,7 @@ final class EventQueueCapacityTests: XCTestCase {
         for i in 0..<(maxSize + 100) {
             let event = Event(
                 appId: "test",
-                event: "test.\(i)",
-                properties: [:]
+                event: "test.\(i)"
             )
             queue.enqueue(event)
         }
@@ -280,8 +284,8 @@ final class PersistenceTests: XCTestCase {
 
     func testWriteAndLoadBatch() {
         let events = [
-            Event(appId: "test", event: "e1", properties: ["k": "v"]),
-            Event(appId: "test", event: "e2", properties: ["n": 42])
+            Event(appId: "test", event: "e1", properties: jsonData(["k": "v"])),
+            Event(appId: "test", event: "e2", properties: jsonData(["n": 42]))
         ]
 
         let filename = persistence.writeBatch(events)

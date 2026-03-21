@@ -207,11 +207,12 @@ public final class StudioAnalytics: @unchecked Sendable {
 
         let sessionId = session.touch()
         let contextDict = context.context(sessionId: sessionId)
+        let propsData = (try? JSONSerialization.data(withJSONObject: properties)) ?? Data("{}".utf8)
 
         let analyticsEvent = Event(
             appId: appId,
             event: event,
-            properties: properties,
+            properties: propsData,
             context: contextDict
         )
 
@@ -234,7 +235,6 @@ public final class StudioAnalytics: @unchecked Sendable {
         let event = Event(
             appId: appId,
             event: "session.start",
-            properties: [:],
             context: contextDict
         )
 

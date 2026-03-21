@@ -20,6 +20,9 @@ api/.dev-password
 # Nix
 result
 
+# MCP config (contains API keys and server IPs)
+.mcp.json
+
 # Deployment secrets
 infra/hetzner.env
 keys/deploy

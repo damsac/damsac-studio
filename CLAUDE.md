@@ -8,6 +8,8 @@ Self-hosted analytics platform for indie app studios. Go API + SQLite + Swift SD
 nix develop                    # Dev shell (Go, SQLite, air, gopls, hcloud, jq)
 cd api && go run .             # Run locally on :8080
 cd api && go build -o api      # Build binary
+scripts/dev                     # Run dev server (sets API_KEYS=devkey:dev-app)
+cd api && go test -v ./...      # Run tests
 
 ### Swift SDK
 cd sdk/swift && swift build    # Build SDK
@@ -41,6 +43,7 @@ dp                             # Join/create shared pair session
 - `keys/` — SSH deploy keys (private key git-ignored)
 - `module-dev.nix` — Dev mode service (air hot reload, relaxed hardening)
 - `modules/` — NixOS modules (users, workspace, tmux, home-manager) — auto-imported by configuration.nix
+- `.mcp.json` — MCP server config for Claude Code (gitignored — contains keys)
 
 ## API Endpoints
 
@@ -49,6 +52,7 @@ dp                             # Join/create shared pair session
 - `GET /dashboard` — Analytics dashboard (session cookie auth)
 - `GET /dashboard/events/stream` — SSE real-time events
 - `GET /projects` — GitHub project board (requires GITHUB_TOKEN)
+- `POST|GET|DELETE /mcp` — MCP Streamable HTTP endpoint (auth: `X-API-Key` header, read-only SQL query tool)
 
 ## Environment Variables
 
@@ -64,6 +68,10 @@ Optional: `PORT` (default 8080), `DATA_DIR` (default `.`), `GITHUB_TOKEN`, `DASH
 - Dashboard sessions are in-memory (64-byte random tokens, not JWT) — restart clears sessions
 - SSE broker drops messages to slow subscribers (channel buffer 16) rather than blocking ingest
 - Auth uses `crypto/subtle.ConstantTimeCompare` — don't replace with `==`
+- `modernc.org/sqlite` strips query params from plain-path DSNs — must use `file:` URI format (e.g. `file:path?mode=ro`) for params to take effect
+- Read-only DB (`OpenReadOnlyDB`) uses DSN-level `_pragma` so pool can have >1 conn (unlike write conn's `MaxOpenConns=1`)
+- Prod is behind Caddy on port 80 — port 8080 is not open externally
+- `.mcp.json` is gitignored (contains API keys and prod IP)
 
 ## Code Style
 

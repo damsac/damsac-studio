@@ -113,65 +113,6 @@ final class EventSerializationTests: XCTestCase {
         XCTAssertNil(events)
     }
 
-    func testLLMRequestProperties() {
-        // Verify the trackLLMRequest helper builds correct property names.
-        // We can't easily call the static method without configure, so we test
-        // the property dictionary shape directly.
-        let requestId = UUID()
-        let conversationId = UUID()
-
-        var props: [String: Any] = [
-            "request_id": requestId.uuidString,
-            "conversation_id": conversationId.uuidString,
-            "call_type": "agent",
-            "tokens_in": 3200,
-            "tokens_out": 580,
-            "model": "anthropic/claude-haiku-4.5",
-            "cost_micros": Int64(6402),
-            "latency_ms": 1850,
-            "streaming": true,
-            "turn_number": 2,
-            "conversation_messages": 7,
-            "tool_calls": ["create_entries", "update_memory", "update_layout"],
-            "tool_call_count": 3,
-            "action_count": 5,
-            "parse_failure_count": 0,
-            "has_text_response": false,
-        ]
-        props["ttft_ms"] = 290
-        props["variant"] = "scanner"
-
-        let event = Event(
-            appId: "murmur-ios",
-            event: "llm.request",
-            properties: jsonData(props),
-            context: [:]
-        )
-
-        let json = event.toJSON()
-        let jsonProps = json["properties"] as? [String: Any]
-
-        XCTAssertEqual(jsonProps?["request_id"] as? String, requestId.uuidString)
-        XCTAssertEqual(jsonProps?["conversation_id"] as? String, conversationId.uuidString)
-        XCTAssertEqual(jsonProps?["call_type"] as? String, "agent")
-        XCTAssertEqual(jsonProps?["tokens_in"] as? Int, 3200)
-        XCTAssertEqual(jsonProps?["tokens_out"] as? Int, 580)
-        XCTAssertEqual(jsonProps?["model"] as? String, "anthropic/claude-haiku-4.5")
-        XCTAssertEqual(jsonProps?["cost_micros"] as? Int64, 6402)
-        XCTAssertEqual(jsonProps?["latency_ms"] as? Int, 1850)
-        XCTAssertEqual(jsonProps?["streaming"] as? Bool, true)
-        XCTAssertEqual(jsonProps?["turn_number"] as? Int, 2)
-        XCTAssertEqual(jsonProps?["conversation_messages"] as? Int, 7)
-        XCTAssertEqual(jsonProps?["tool_call_count"] as? Int, 3)
-        XCTAssertEqual(jsonProps?["action_count"] as? Int, 5)
-        XCTAssertEqual(jsonProps?["parse_failure_count"] as? Int, 0)
-        XCTAssertEqual(jsonProps?["has_text_response"] as? Bool, false)
-        XCTAssertEqual(jsonProps?["ttft_ms"] as? Int, 290)
-        XCTAssertEqual(jsonProps?["variant"] as? String, "scanner")
-
-        let toolCalls = jsonProps?["tool_calls"] as? [String]
-        XCTAssertEqual(toolCalls, ["create_entries", "update_memory", "update_layout"])
-    }
 }
 
 final class EventQueueCapacityTests: XCTestCase {
@@ -256,11 +197,11 @@ final class SessionTests: XCTestCase {
 final class ConfigurationGatingTests: XCTestCase {
 
     func testEventsDroppedBeforeConfigure() {
-        // This test verifies that tracking before configure doesn't crash.
-        // Since events are silently dropped, we just verify no crash occurs.
-        // We use a fresh track call — the singleton might already be configured
-        // from another test, but the important thing is no crash.
-        StudioAnalytics.track("should.be.dropped", properties: ["test": true])
+        struct GatingTestEvent: AnalyticsEvent {
+            static let eventName = "should.be.dropped"
+            let test: Bool
+        }
+        StudioAnalytics.track(GatingTestEvent(test: true))
         // If we get here without crashing, the test passes.
     }
 }
@@ -358,6 +299,34 @@ final class AnalyticsEventTests: XCTestCase {
 
         XCTAssertEqual(dict?["category"] as? String, "todo")
         XCTAssertEqual(dict?["count"] as? Int, 42)
+    }
+
+    func testTypedEventWireFormatRoundTrip() throws {
+        let event = TestEvent(category: "todo", count: 42)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(event)
+
+        let internalEvent = Event(appId: "test", event: TestEvent.eventName, properties: data, context: ["sdk_version": "0.2.0"])
+        let json = internalEvent.toJSON()
+        let props = json["properties"] as? [String: Any]
+
+        XCTAssertEqual(json["event"] as? String, "test.event")
+        XCTAssertEqual(props?["category"] as? String, "todo")
+        XCTAssertEqual(props?["count"] as? Int, 42)
+
+        // Verify batch serialization works too
+        let batch = [internalEvent]
+        let batchData = batch.toBatchJSONData()
+        XCTAssertNotNil(batchData)
+
+        if let batchData {
+            let restored = [Event].fromBatchJSON(batchData)
+            XCTAssertEqual(restored?.count, 1)
+            XCTAssertEqual(restored?[0].event, "test.event")
+            let restoredProps = (try? JSONSerialization.jsonObject(with: restored![0].properties)) as? [String: Any]
+            XCTAssertEqual(restoredProps?["category"] as? String, "todo")
+        }
     }
 
     func testEmptyAnalyticsEvent() throws {
@@ -463,5 +432,18 @@ final class LLMRequestEventTests: XCTestCase {
 
         // tool_call_count should be 0 for empty array
         XCTAssertEqual(dict["tool_call_count"] as? Int, 0)
+    }
+}
+
+final class TypedTrackTests: XCTestCase {
+
+    func testTypedTrackDoesNotCrashBeforeConfigure() {
+        struct SimpleEvent: AnalyticsEvent {
+            static let eventName = "simple.test"
+            let value: Int
+        }
+
+        // Should silently drop, not crash
+        StudioAnalytics.track(SimpleEvent(value: 42))
     }
 }

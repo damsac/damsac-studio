@@ -68,8 +68,29 @@ func newEventViewFromEvent(e Event) eventView {
 	}
 }
 
+// DashboardMetrics holds aggregate metrics for the top of the dashboard.
+type DashboardMetrics struct {
+	TotalCost  string
+	TotalUsers int
+	Heatmap    []HeatmapRow
+}
+
+// HeatmapRow is one row (day) in the token usage heatmap.
+type HeatmapRow struct {
+	Day   string
+	Cells []HeatmapCell
+}
+
+// HeatmapCell is a single hour bucket in the heatmap.
+type HeatmapCell struct {
+	Tokens  int64
+	Color   template.CSS
+	Tooltip string
+}
+
 // eventsPageData is the data passed to the events.html template.
 type eventsPageData struct {
+	Metrics     DashboardMetrics
 	Events      []eventView
 	AppIDs      []string
 	EventTypes  []string
@@ -108,6 +129,7 @@ func (d *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Reques
 
 	appIDs, _ := d.store.GetDistinctAppIDs()
 	eventTypes, _ := d.store.GetDistinctEventTypes()
+	metrics := d.buildMetrics()
 
 	views := make([]eventView, len(events))
 	for i, e := range events {
@@ -115,6 +137,7 @@ func (d *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Reques
 	}
 
 	data := eventsPageData{
+		Metrics:     metrics,
 		Events:      views,
 		AppIDs:      appIDs,
 		EventTypes:  eventTypes,
@@ -319,6 +342,30 @@ func (d *DashboardHandler) renderPartial(w http.ResponseWriter, name string, dat
 	}
 }
 
+// buildMetrics fetches aggregate metrics for the dashboard header.
+func (d *DashboardHandler) buildMetrics() DashboardMetrics {
+	costMicros, err := d.store.GetTotalLLMCostMicros()
+	if err != nil {
+		log.Printf("dashboard: metrics cost: %v", err)
+	}
+
+	users, err := d.store.GetTotalUniqueDevices()
+	if err != nil {
+		log.Printf("dashboard: metrics users: %v", err)
+	}
+
+	tokenData, err := d.store.TokensByDayHour()
+	if err != nil {
+		log.Printf("dashboard: metrics heatmap: %v", err)
+	}
+
+	return DashboardMetrics{
+		TotalCost:  formatCost(costMicros),
+		TotalUsers: users,
+		Heatmap:    buildHeatmap(tokenData),
+	}
+}
+
 // ---------- helpers ----------
 
 func formatTimestamp(ts string) string {
@@ -351,4 +398,63 @@ func truncate(s string, max int) string {
 		return s
 	}
 	return s[:max] + "..."
+}
+
+func formatCost(micros int64) string {
+	dollars := float64(micros) / 1_000_000.0
+	if dollars >= 0.01 || micros == 0 {
+		return fmt.Sprintf("$%.2f", dollars)
+	}
+	return fmt.Sprintf("$%.4f", dollars)
+}
+
+func buildHeatmap(data map[[2]int]int64) []HeatmapRow {
+	if data == nil {
+		data = make(map[[2]int]int64)
+	}
+
+	days := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+	// SQLite strftime('%w'): 0=Sun, 1=Mon, ..., 6=Sat
+	dowMap := []int{1, 2, 3, 4, 5, 6, 0}
+
+	var maxVal int64
+	for _, v := range data {
+		if v > maxVal {
+			maxVal = v
+		}
+	}
+
+	rows := make([]HeatmapRow, 7)
+	for i, day := range days {
+		dow := dowMap[i]
+		cells := make([]HeatmapCell, 24)
+		for h := 0; h < 24; h++ {
+			tokens := data[[2]int{dow, h}]
+			cells[h] = HeatmapCell{
+				Tokens:  tokens,
+				Color:   template.CSS(heatmapColor(tokens, maxVal)),
+				Tooltip: fmt.Sprintf("%s %02d:00 – %d tokens", day, h, tokens),
+			}
+		}
+		rows[i] = HeatmapRow{Day: day, Cells: cells}
+	}
+	return rows
+}
+
+func heatmapColor(value, maxValue int64) string {
+	if value == 0 {
+		return "rgba(88,166,255,0.04)"
+	}
+	ratio := float64(value) / float64(maxValue)
+	// 4 discrete levels using accent color at varying opacity
+	switch {
+	case ratio <= 0.25:
+		return "rgba(88,166,255,0.2)"
+	case ratio <= 0.50:
+		return "rgba(88,166,255,0.4)"
+	case ratio <= 0.75:
+		return "rgba(88,166,255,0.65)"
+	default:
+		return "rgba(88,166,255,0.95)"
+	}
 }

@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# damsac-status — quick health check on the damsac VPS
+# Usage: damsac-status
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VPS_IP="${DAMSAC_VPS_IP:-}"
+SSH_KEY="$PROJECT_DIR/keys/deploy"
+SSH_OPTS=(-i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+
+if [[ -z "$VPS_IP" ]]; then
+  echo "error: DAMSAC_VPS_IP is not set" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "error: SSH key not found at $SSH_KEY" >&2
+  exit 1
+fi
+
+ssh_cmd() {
+  ssh "${SSH_OPTS[@]}" "root@${VPS_IP}" "$@"
+}
+
+echo "damsac @ $VPS_IP"
+echo "---"
+
+ssh_cmd "bash -c '
+  # damsac-studio service
+  state=\$(systemctl is-active damsac-studio 2>/dev/null || echo \"inactive\")
+  if [ \"\$state\" = \"active\" ]; then
+    since=\$(systemctl show damsac-studio --property=ActiveEnterTimestamp --value)
+    uptime_s=\$(( \$(date +%s) - \$(date -d \"\$since\" +%s) ))
+    h=\$(( uptime_s / 3600 ))
+    m=\$(( (uptime_s % 3600) / 60 ))
+    echo \"damsac-studio: active (up \${h}h \${m}m)\"
+  else
+    echo \"damsac-studio: \$state\"
+  fi
+
+  # Memory usage
+  mem=\$(systemctl show damsac-studio --property=MemoryCurrent --value 2>/dev/null || echo \"unknown\")
+  if [ \"\$mem\" != \"unknown\" ] && [ \"\$mem\" != \"[not set]\" ] && [ \"\$mem\" -gt 0 ] 2>/dev/null; then
+    mem_mb=\$(( mem / 1048576 ))
+    echo \"memory: \${mem_mb}M\"
+  fi
+
+  # Ports
+  ss -tlnp 2>/dev/null | grep -q \":8080 \" && echo \"port 8080: listening\" || echo \"port 8080: not listening\"
+  ss -tlnp 2>/dev/null | grep -q \":80 \" && echo \"port 80: listening (caddy)\" || echo \"port 80: not listening\"
+  ss -tlnp 2>/dev/null | grep -q \":443 \" && echo \"port 443: listening (caddy)\" || echo \"port 443: not listening\"
+
+  # Secrets
+  test -f /run/secrets/damsac-dashboard-pw && echo \"secrets: present\" || echo \"secrets: MISSING\"
+
+  # Caddy
+  caddy_state=\$(systemctl is-active caddy 2>/dev/null || echo \"inactive\")
+  echo \"caddy: \$caddy_state\"
+
+  # Health endpoint
+  health=\$(curl -sf http://localhost:8080/v1/health 2>/dev/null || echo \"unreachable\")
+  echo \"health: \$health\"
+
+  # Last log line
+  last=\$(journalctl -u damsac-studio -n 1 --no-pager --no-hostname -o cat 2>/dev/null || echo \"(no logs)\")
+  echo \"last log: \$last\"
+
+  # Disk usage
+  echo \"---\"
+  echo \"disk:\"
+  df -h / | tail -1 | awk \"{print \\\"  used: \\\" \\\$3 \\\" / \\\" \\\$2 \\\" (\\\" \\\$5 \\\")\\\"}\"
+  if [ -d /var/lib/damsac-studio ]; then
+    db_size=\$(du -sh /var/lib/damsac-studio 2>/dev/null | cut -f1)
+    echo \"  data dir: \$db_size\"
+  fi
+'"

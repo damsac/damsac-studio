@@ -253,6 +253,59 @@ func (s *Store) GetDistinctEventTypes() ([]string, error) {
 	return types, rows.Err()
 }
 
+// GetTotalLLMCostMicros returns the sum of cost_micros from all llm.request events.
+func (s *Store) GetTotalLLMCostMicros() (int64, error) {
+	var cost int64
+	err := s.db.QueryRow(`
+		SELECT COALESCE(SUM(CAST(json_extract(properties, '$.cost_micros') AS INTEGER)), 0)
+		FROM events WHERE event = 'llm.request'
+	`).Scan(&cost)
+	return cost, err
+}
+
+// GetTotalUniqueDevices returns the count of distinct device_id values across all events.
+func (s *Store) GetTotalUniqueDevices() (int, error) {
+	var count int
+	err := s.db.QueryRow(`
+		SELECT COUNT(DISTINCT json_extract(context, '$.device_id'))
+		FROM events
+		WHERE json_extract(context, '$.device_id') IS NOT NULL
+		  AND json_extract(context, '$.device_id') != ''
+	`).Scan(&count)
+	return count, err
+}
+
+// TokensByDayHour returns a map of (day_of_week, hour) -> total tokens for llm.request events.
+func (s *Store) TokensByDayHour() (map[[2]int]int64, error) {
+	rows, err := s.db.Query(`
+		SELECT
+			CAST(strftime('%w', timestamp) AS INTEGER),
+			CAST(strftime('%H', timestamp) AS INTEGER),
+			COALESCE(SUM(
+				COALESCE(CAST(json_extract(properties, '$.tokens_in') AS INTEGER), 0) +
+				COALESCE(CAST(json_extract(properties, '$.tokens_out') AS INTEGER), 0)
+			), 0)
+		FROM events
+		WHERE event = 'llm.request'
+		GROUP BY 1, 2
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[[2]int]int64)
+	for rows.Next() {
+		var dow, hour int
+		var tokens int64
+		if err := rows.Scan(&dow, &hour, &tokens); err != nil {
+			return nil, err
+		}
+		result[[2]int{dow, hour}] = tokens
+	}
+	return result, rows.Err()
+}
+
 // Close closes the underlying database connection.
 func (s *Store) Close() error {
 	return s.db.Close()

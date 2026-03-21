@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# damsac-logs — tail damsac-studio service logs
+# Usage: damsac-logs                        # follow logs (journalctl -f)
+#        damsac-logs 100                    # last 100 lines
+#        damsac-logs grep <pat>             # grep the logs
+#        damsac-logs <service-name>         # follow logs for a different service
+#        damsac-logs <service-name> 100     # last 100 lines for a different service
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VPS_IP="${DAMSAC_VPS_IP:-}"
+SSH_KEY="$PROJECT_DIR/keys/deploy"
+SSH_OPTS=(-i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+
+if [[ -z "$VPS_IP" ]]; then
+  echo "error: DAMSAC_VPS_IP is not set" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "error: SSH key not found at $SSH_KEY" >&2
+  exit 1
+fi
+
+ssh_cmd() {
+  ssh "${SSH_OPTS[@]}" "root@${VPS_IP}" "$@"
+}
+
+SERVICE="damsac-studio"
+
+if [[ $# -eq 0 ]]; then
+  ssh_cmd "journalctl -u $SERVICE -f --no-hostname"
+elif [[ "$1" == "grep" ]]; then
+  if [[ $# -lt 2 ]]; then
+    echo "usage: damsac-logs grep <pattern>" >&2
+    exit 1
+  fi
+  shift
+  ssh_cmd "journalctl -u $SERVICE --no-pager --no-hostname | grep -i '$*'"
+elif [[ "$1" =~ ^[0-9]+$ ]]; then
+  ssh_cmd "journalctl -u $SERVICE -n $1 --no-pager --no-hostname"
+else
+  # First arg is a service name
+  SERVICE="$1"
+  shift
+  if [[ $# -eq 0 ]]; then
+    ssh_cmd "journalctl -u $SERVICE -f --no-hostname"
+  elif [[ "$1" =~ ^[0-9]+$ ]]; then
+    ssh_cmd "journalctl -u $SERVICE -n $1 --no-pager --no-hostname"
+  else
+    echo "usage: damsac-logs [service] [N]" >&2
+    echo "       damsac-logs grep <pattern>" >&2
+    exit 1
+  fi
+fi

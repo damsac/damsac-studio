@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# damsac-deploy — deploy damsac to VPS with safety checks
+# Usage: damsac-deploy
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VPS_IP="${DAMSAC_VPS_IP:-}"
+SSH_KEY="$PROJECT_DIR/keys/deploy"
+
+if [[ -z "$VPS_IP" ]]; then
+  echo "error: DAMSAC_VPS_IP is not set" >&2
+  echo "export DAMSAC_VPS_IP=<your VPS IP>" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "error: SSH key not found at $SSH_KEY" >&2
+  exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+# Check for uncommitted changes
+if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+  echo "warning: you have uncommitted changes:"
+  echo ""
+  git status --short
+  echo ""
+  read -r -p "deploy anyway? [y/N] " confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo "aborted."
+    exit 1
+  fi
+fi
+
+# Check for untracked nix files
+untracked=$(git ls-files --others --exclude-standard '*.nix' 2>/dev/null || true)
+if [[ -n "$untracked" ]]; then
+  echo "warning: untracked .nix files (won't be included in deploy):"
+  echo "$untracked"
+  echo ""
+fi
+
+# Confirm
+echo "deploying damsac to $VPS_IP..."
+read -r -p "continue? [y/N] " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+  echo "aborted."
+  exit 1
+fi
+
+# Run the deploy
+exec bash "$SCRIPT_DIR/deploy.sh" "$VPS_IP"

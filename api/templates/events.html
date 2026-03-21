@@ -1,5 +1,31 @@
 {{define "content"}}
 <div class="events-page">
+    <div class="metrics-row">
+        <div class="metric-card">
+            <span class="metric-label">total llm cost</span>
+            <span class="metric-value">{{.Metrics.TotalCost}}</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">total users</span>
+            <span class="metric-value">{{.Metrics.TotalUsers}}</span>
+        </div>
+        <div class="metric-card metric-card-wide">
+            <span class="metric-label">token usage</span>
+            <div class="heatmap">
+                {{range .Metrics.Heatmap}}
+                <div class="hm-row">
+                    <span class="hm-day">{{.Day}}</span>
+                    <div class="hm-cells">
+                        {{range .Cells}}
+                        <div class="hm-cell" style="background:{{.Color}}" title="{{.Tooltip}}"></div>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
     <div class="filters">
         <form hx-get="/dashboard/events" hx-target="#events-table" hx-push-url="false">
             <select name="app_id">

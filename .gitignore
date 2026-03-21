@@ -18,6 +18,10 @@ api/studio-analytics
 # Nix
 result
 
+# Deployment secrets
+infra/hetzner.env
+keys/deploy
+
 # Swift
 sdk/swift/.build/
 

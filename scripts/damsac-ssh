@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# damsac-ssh — SSH into the damsac VPS
+# Usage: damsac-ssh              # interactive shell
+#        damsac-ssh <command>    # run a command
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VPS_IP="${DAMSAC_VPS_IP:-}"
+SSH_KEY="$PROJECT_DIR/keys/deploy"
+SSH_OPTS=(-i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+
+if [[ -z "$VPS_IP" ]]; then
+  echo "error: DAMSAC_VPS_IP is not set" >&2
+  echo "export DAMSAC_VPS_IP=<your VPS IP>" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "error: SSH key not found at $SSH_KEY" >&2
+  echo "generate one: ssh-keygen -t ed25519 -f keys/deploy -C damsac-deploy" >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  exec ssh "${SSH_OPTS[@]}" "root@${VPS_IP}"
+else
+  exec ssh "${SSH_OPTS[@]}" "root@${VPS_IP}" "$@"
+fi

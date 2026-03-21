@@ -37,6 +37,13 @@ type eventView struct {
 	ContextFormatted    string
 	Cost                string // formatted dollar amount, empty for non-LLM events
 	CallType            string // e.g. "agent", "extraction", empty for non-LLM events
+	TokensIn            string // formatted token count
+	TokensOut           string // formatted token count
+	Model               string // e.g. "claude-haiku-4.5"
+	RequestID           string // shared request_id linking llm.request and credits.charged
+	GroupPos            string // "first", "last", or "" (ungrouped)
+	DeviceID            string // full device_id from context
+	DeviceIDShort       string // first 8 chars for display
 }
 
 func newEventView(e StoredEvent) eventView {
@@ -53,7 +60,8 @@ func newEventView(e StoredEvent) eventView {
 		PropertiesFormatted: prettyJSON(e.Properties),
 		ContextFormatted:    prettyJSON(e.Context),
 	}
-	extractLLMFields(&v, e.Properties)
+	extractPropsFields(&v, e.Properties)
+	extractContextFields(&v, e.Context)
 	return v
 }
 
@@ -70,15 +78,20 @@ func newEventViewFromEvent(e Event) eventView {
 		PropertiesFormatted: prettyJSON(e.Properties),
 		ContextFormatted:    prettyJSON(e.Context),
 	}
-	extractLLMFields(&v, e.Properties)
+	extractPropsFields(&v, e.Properties)
+	extractContextFields(&v, e.Context)
 	return v
 }
 
-// extractLLMFields parses cost and call_type from properties JSON into the view.
-func extractLLMFields(v *eventView, propsJSON string) {
+// extractPropsFields parses display fields from properties JSON into the view.
+func extractPropsFields(v *eventView, propsJSON string) {
 	var props struct {
 		CostMicros *int64  `json:"cost_micros"`
 		CallType   *string `json:"call_type"`
+		TokensIn   *int64  `json:"tokens_in"`
+		TokensOut  *int64  `json:"tokens_out"`
+		Model      *string `json:"model"`
+		RequestID  *string `json:"request_id"`
 	}
 	if json.Unmarshal([]byte(propsJSON), &props) != nil {
 		return
@@ -88,6 +101,118 @@ func extractLLMFields(v *eventView, propsJSON string) {
 	}
 	if props.CallType != nil {
 		v.CallType = *props.CallType
+	}
+	if props.TokensIn != nil {
+		v.TokensIn = formatInt(*props.TokensIn)
+	}
+	if props.TokensOut != nil {
+		v.TokensOut = formatInt(*props.TokensOut)
+	}
+	if props.Model != nil {
+		// Strip provider prefix (e.g. "anthropic/claude-haiku-4.5" -> "claude-haiku-4.5")
+		m := *props.Model
+		if idx := strings.LastIndex(m, "/"); idx >= 0 {
+			m = m[idx+1:]
+		}
+		v.Model = m
+	}
+	if props.RequestID != nil {
+		v.RequestID = *props.RequestID
+	}
+}
+
+// extractContextFields parses device_id from context JSON into the view.
+func extractContextFields(v *eventView, ctxJSON string) {
+	var ctx struct {
+		DeviceID *string `json:"device_id"`
+	}
+	if json.Unmarshal([]byte(ctxJSON), &ctx) != nil {
+		return
+	}
+	if ctx.DeviceID != nil && *ctx.DeviceID != "" {
+		v.DeviceID = *ctx.DeviceID
+		if len(*ctx.DeviceID) > 8 {
+			v.DeviceIDShort = (*ctx.DeviceID)[:8]
+		} else {
+			v.DeviceIDShort = *ctx.DeviceID
+		}
+	}
+}
+
+// applyGrouping clusters events that share a request_id so they are adjacent,
+// then marks them with GroupPos ("first"/"last") for visual styling.
+func applyGrouping(views []eventView) {
+	// Build map of request_id -> list of indices (in current order).
+	groups := make(map[string][]int)
+	for i := range views {
+		if views[i].RequestID != "" {
+			groups[views[i].RequestID] = append(groups[views[i].RequestID], i)
+		}
+	}
+
+	// Collect request_ids that actually form groups (2+ events).
+	type groupInfo struct {
+		requestID string
+		first     int // index of first member in original order
+	}
+	var toCluster []groupInfo
+	for rid, indices := range groups {
+		if len(indices) >= 2 {
+			toCluster = append(toCluster, groupInfo{rid, indices[0]})
+		}
+	}
+
+	// For each group, ensure members are adjacent: pull later members
+	// to right after the first member.
+	for _, g := range toCluster {
+		indices := groups[g.requestID]
+		anchor := -1
+		// Find current position of the first member.
+		for i, v := range views {
+			if v.RequestID == g.requestID {
+				anchor = i
+				break
+			}
+		}
+		if anchor < 0 {
+			continue
+		}
+		// Move other group members right after the anchor.
+		insertAt := anchor + 1
+		for pass := 0; pass < len(indices)-1; pass++ {
+			for i := insertAt + 1; i < len(views); i++ {
+				if views[i].RequestID == g.requestID {
+					// Shift element at i to insertAt.
+					v := views[i]
+					copy(views[insertAt+1:i+1], views[insertAt:i])
+					views[insertAt] = v
+					insertAt++
+					break
+				}
+			}
+		}
+	}
+
+	// Now mark positions within each group.
+	i := 0
+	for i < len(views) {
+		if views[i].RequestID == "" {
+			i++
+			continue
+		}
+		rid := views[i].RequestID
+		start := i
+		for i < len(views) && views[i].RequestID == rid {
+			i++
+		}
+		if i-start < 2 {
+			continue
+		}
+		views[start].GroupPos = "first"
+		for j := start + 1; j < i-1; j++ {
+			views[j].GroupPos = "mid"
+		}
+		views[i-1].GroupPos = "last"
 	}
 }
 
@@ -117,11 +242,11 @@ type eventsPageData struct {
 	Events       []eventView
 	AppIDs       []string
 	EventTypes   []string
-	ActiveAppID  string
-	ActiveEvent  string
-	ActiveFrom   string
-	ActiveTo     string
-	Page         int
+	ActiveAppID         string
+	ActiveEvent         string
+	ActiveDeviceID      string
+	ActiveDeviceIDShort string
+	Page                int
 	PrevPage     int
 	NextPage     int
 	HasMore      bool
@@ -160,17 +285,17 @@ func (d *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Reques
 	for i, e := range events {
 		views[i] = newEventView(e)
 	}
+	applyGrouping(views)
 
 	data := eventsPageData{
 		Metrics:      metrics,
 		Events:       views,
 		AppIDs:       appIDs,
 		EventTypes:   eventTypes,
-		ActiveAppID:  filters.AppID,
-		ActiveEvent:  filters.EventType,
-		ActiveFrom:   r.URL.Query().Get("from"),
-		ActiveTo:     r.URL.Query().Get("to"),
-
+		ActiveAppID:         filters.AppID,
+		ActiveEvent:         filters.EventType,
+		ActiveDeviceID:      filters.DeviceID,
+		ActiveDeviceIDShort: truncate(filters.DeviceID, 8),
 		Page:         page,
 		PrevPage:     page - 1,
 		NextPage:     page + 1,
@@ -209,9 +334,14 @@ func (d *DashboardHandler) HandleEventsPartial(w http.ResponseWriter, r *http.Re
 	for i, e := range events {
 		views[i] = newEventView(e)
 	}
+	applyGrouping(views)
 
 	data := eventsPageData{
-		Events:       views,
+		Events:             views,
+		ActiveAppID:         filters.AppID,
+		ActiveEvent:         filters.EventType,
+		ActiveDeviceID:      filters.DeviceID,
+		ActiveDeviceIDShort: truncate(filters.DeviceID, 8),
 
 		Page:         page,
 		PrevPage:     page - 1,
@@ -320,22 +450,10 @@ func (d *DashboardHandler) parseFilters(r *http.Request) (EventFilters, int) {
 		page = 1
 	}
 
-	from := q.Get("from")
-	to := q.Get("to")
-
-	// Convert datetime-local format (2026-03-15T10:30) to RFC3339 if needed.
-	if from != "" && !strings.Contains(from, "Z") && !strings.Contains(from, "+") {
-		from = from + ":00Z"
-	}
-	if to != "" && !strings.Contains(to, "Z") && !strings.Contains(to, "+") {
-		to = to + ":00Z"
-	}
-
 	return EventFilters{
 		AppID:     q.Get("app_id"),
 		EventType: q.Get("event"),
-		From:      from,
-		To:        to,
+		DeviceID:  q.Get("device_id"),
 	}, page
 }
 
@@ -348,11 +466,8 @@ func (d *DashboardHandler) filterQueryString(f EventFilters) string {
 	if f.EventType != "" {
 		parts = append(parts, "&event="+url.QueryEscape(f.EventType))
 	}
-	if f.From != "" {
-		parts = append(parts, "&from="+url.QueryEscape(f.From))
-	}
-	if f.To != "" {
-		parts = append(parts, "&to="+url.QueryEscape(f.To))
+	if f.DeviceID != "" {
+		parts = append(parts, "&device_id="+url.QueryEscape(f.DeviceID))
 	}
 	return strings.Join(parts, "")
 }
@@ -431,6 +546,22 @@ func prettyJSON(raw string) string {
 		return raw
 	}
 	return buf.String()
+}
+
+func formatInt(n int64) string {
+	s := strconv.FormatInt(n, 10)
+	// Insert commas for thousands separators.
+	if len(s) <= 3 {
+		return s
+	}
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
 }
 
 func flatJSON(raw string) string {

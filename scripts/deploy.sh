@@ -8,6 +8,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Source .env if present.
+[[ -f "$PROJECT_DIR/.env" ]] && source "$PROJECT_DIR/.env"
+
 HOST="${1:-${DAMSAC_VPS_IP:-}}"
 SSH_KEY="$PROJECT_DIR/keys/deploy"
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"

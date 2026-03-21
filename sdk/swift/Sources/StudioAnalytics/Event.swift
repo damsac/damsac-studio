@@ -6,7 +6,7 @@ struct Event: Identifiable {
     let appId: String
     let event: String
     let timestamp: Date
-    let properties: [String: Any]
+    let properties: Data
     let context: [String: Any]
 
     init(
@@ -14,7 +14,7 @@ struct Event: Identifiable {
         appId: String,
         event: String,
         timestamp: Date = Date(),
-        properties: [String: Any] = [:],
+        properties: Data = Data("{}".utf8),
         context: [String: Any] = [:]
     ) {
         self.id = id
@@ -37,12 +37,13 @@ extension Event {
 
     /// Convert to a JSON-compatible dictionary.
     func toJSON() -> [String: Any] {
+        let propsDict = (try? JSONSerialization.jsonObject(with: properties)) as? [String: Any] ?? [:]
         return [
             "id": id.uuidString,
             "app_id": appId,
             "event": event,
             "timestamp": Self.iso8601Formatter.string(from: timestamp),
-            "properties": properties,
+            "properties": propsDict,
             "context": context
         ]
     }
@@ -66,7 +67,8 @@ extension Event {
             return nil
         }
 
-        let properties = dict["properties"] as? [String: Any] ?? [:]
+        let propsDict = dict["properties"] as? [String: Any] ?? [:]
+        let propsData = (try? JSONSerialization.data(withJSONObject: propsDict)) ?? Data("{}".utf8)
         let context = dict["context"] as? [String: Any] ?? [:]
 
         return Event(
@@ -74,7 +76,7 @@ extension Event {
             appId: appId,
             event: event,
             timestamp: timestamp,
-            properties: properties,
+            properties: propsData,
             context: context
         )
     }
@@ -84,7 +86,6 @@ extension Event {
 
 extension Array where Element == Event {
     /// Serialize an array of events into the batch payload format.
-    /// Includes `app_id` at the top level (from the first event) as required by the ingest API.
     func toBatchJSON() -> [String: Any] {
         var payload: [String: Any] = ["events": self.map { $0.toJSON() }]
         if let appId = self.first?.appId {

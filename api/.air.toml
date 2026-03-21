@@ -1,5 +1,10 @@
+root = "."
+tmp_dir = "tmp"
+
 [build]
   cmd = "go build -buildvcs=false -o ./tmp/main ."
   bin = "./tmp/main"
+  delay = 500
   include_ext = ["go", "html", "css", "js"]
   exclude_dir = ["tmp"]
+  kill_delay = "1s"

@@ -26,7 +26,7 @@
         version = "0.1.0";
         src = ./api;
 
-        vendorHash = "sha256-tfErJkC3XyAZthZIikEfmaTM7TaUGYB49+dHdpCDXt8=";
+        vendorHash = null;
 
         postInstall = ''
           mv $out/bin/api $out/bin/damsac-studio

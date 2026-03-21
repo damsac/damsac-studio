@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/../api"
+
+# Create dev password file if it doesn't exist.
+DEV_PW_FILE="${DATA_DIR:-.}/.dev-password"
+if [ ! -f "$DEV_PW_FILE" ]; then
+  echo "dev" > "$DEV_PW_FILE"
+  echo "Created $DEV_PW_FILE (password: dev)"
+fi
+
+export DEV=1
+export API_KEYS="${API_KEYS:-devkey:dev-app}"
+export DASHBOARD_PASSWORD_FILE="${DASHBOARD_PASSWORD_FILE:-$DEV_PW_FILE}"
+export PORT="${PORT:-8080}"
+
+# Pick up GitHub token from gh CLI if not already set.
+if [ -z "${GITHUB_TOKEN:-}" ] && command -v gh &>/dev/null; then
+  GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+  export GITHUB_TOKEN
+fi
+
+echo "Starting dev server on :$PORT"
+echo "  Dashboard: http://localhost:$PORT/dashboard (password: dev)"
+echo "  API key:   devkey (app: dev-app)"
+echo ""
+
+exec air

@@ -40,11 +40,7 @@
                 <option value="{{.}}" {{if eq . $.ActiveEvent}}selected{{end}}>{{.}}</option>
                 {{end}}
             </select>
-            <input type="datetime-local" name="from" value="{{.ActiveFrom}}" placeholder="from"
-                   hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
-            <input type="datetime-local" name="to" value="{{.ActiveTo}}" placeholder="to"
-                   hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
-            <a href="/dashboard" class="filter-clear">clear</a>
+<a href="/dashboard" class="filter-clear">clear</a>
         </div>
     </form>
 
@@ -52,30 +48,31 @@
         {{template "events_table" .}}
     </div>
 </div>
-<script>
-document.addEventListener('keydown', function(e) {
-    if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-        e.preventDefault();
-        document.querySelector('.filter-search input').focus();
-    }
-});
-</script>
 {{end}}
 
 {{define "events_table"}}
 <div class="table-header">
-    <span class="result-count">{{.TotalCount}} event{{if ne .TotalCount 1}}s{{end}}</span>
+    <div class="table-header-left">
+        <span class="result-count">{{.TotalCount}} event{{if ne .TotalCount 1}}s{{end}}</span>
+        {{if .ActiveAppID}}<span class="active-badge">{{.ActiveAppID}}</span>{{end}}
+        {{if .ActiveEvent}}<span class="active-badge">{{.ActiveEvent}}</span>{{end}}
+        {{if .ActiveDeviceID}}<span class="active-badge" title="{{.ActiveDeviceID}}">user:{{.ActiveDeviceIDShort}} <a class="badge-clear" hx-get="/dashboard/events" hx-target="#events-table" hx-include=".filter-bar">&times;</a></span>{{end}}
+    </div>
     <span class="page-info">page {{.Page}}</span>
 </div>
 <div class="table-wrap" hx-ext="sse" sse-connect="/dashboard/events/stream">
-    <table>
+    <table class="{{if .ActiveAppID}}filtered-app{{end}} {{if .ActiveEvent}}filtered-event{{end}} {{if eq .ActiveEvent "llm.request"}}llm-view{{end}} {{if .ActiveDeviceID}}filtered-user{{end}}">
         <thead>
             <tr>
-                <th>timestamp</th>
-                <th>app</th>
-                <th>event</th>
-                <th>call type</th>
-                <th>cost</th>
+                <th class="col-ts">timestamp</th>
+                <th class="col-app">app</th>
+                <th class="col-event">event</th>
+                <th class="col-call-type">call type</th>
+                <th class="col-model">model</th>
+                <th class="col-tokens-in">tokens in</th>
+                <th class="col-tokens-out">tokens out</th>
+                <th class="col-cost">cost</th>
+                <th class="col-user">user</th>
             </tr>
         </thead>
         <tbody id="events-body" sse-swap="new-events" hx-swap="afterbegin">

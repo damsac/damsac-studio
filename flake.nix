@@ -78,6 +78,8 @@
           {
             nixpkgs.hostPlatform = "x86_64-linux";
             nixpkgs.overlays = [ overlay claude-code.overlays.default ];
+            nixpkgs.config.allowUnfreePredicate = pkg:
+              builtins.elem (nixpkgs.lib.getName pkg) [ "claude-code" ];
           }
           ./disko-config.nix
           ./configuration.nix

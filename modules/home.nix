@@ -36,8 +36,8 @@ let
 
     programs.git = {
       enable = true;
-      userName = realName;
-      userEmail = email;
+      settings.user.name = realName;
+      settings.user.email = email;
     };
 
     programs.tmux = {
@@ -66,7 +66,7 @@ let
         nrsd = "sudo nixos-rebuild switch --flake /srv/damsac/damsac-studio#damsac-dev";
         nrt = "sudo nixos-rebuild test --flake /srv/damsac/damsac-studio#damsac";
       };
-      initExtra = ''
+      initContent = ''
         # Auto-attach to personal tmux session on SSH login
         if [[ -n "$SSH_CONNECTION" ]] && [[ -z "$TMUX" ]]; then
           SOCKET="/run/tmux-damsac/shared"

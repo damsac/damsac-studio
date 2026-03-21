@@ -79,9 +79,11 @@ Both users:
 - Get identical Home Manager environments via NixOS module integration (Claude Code, dev tools, tmux)
 - Have per-user git identity configured in `modules/home.nix` (separate `programs.git` blocks per user with their own `user.name` and `user.email`)
 
-### Git Authentication
+### Git & GitHub Authentication
 
 Git clones use SSH URLs (`git@github.com:damsac/...`). Each user has an SSH keypair generated on first login, with the public key added to their GitHub account. This works for both interactive use and detached Claude Code sessions (no browser flow required, no tokens on disk).
+
+Each user also authenticates `gh` independently (`gh auth login`). This ensures PRs, issues, and API calls are attributed to the correct GitHub account. Auth tokens are stored per-user in `~/.config/gh/` (each user's home directory).
 
 ### Shared Workspace
 
@@ -203,7 +205,7 @@ Each user gets:
 
 **Packages (via Home Manager):**
 - `claude-code` (from the `claude-code-nix` overlay)
-- `git`, `tmux`, `ripgrep`, `fd`, `jq`, `htop`
+- `git`, `gh` (GitHub CLI), `tmux`, `ripgrep`, `fd`, `jq`, `htop`
 - `go`, `air`, `sqlite` (for studio development)
 - `curl`, `wget`
 

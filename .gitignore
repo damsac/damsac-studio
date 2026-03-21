@@ -33,3 +33,6 @@ sdk/swift/.build/
 # Build
 tmp/
 .claude/
+
+# Jujutsu (colocated with git)
+.jj/

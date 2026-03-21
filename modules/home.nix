@@ -11,6 +11,9 @@ let
       # AI tools
       claude-code
 
+      # Version control
+      jujutsu
+
       # Dev tools
       go
       air
@@ -39,6 +42,17 @@ let
       settings.user.name = realName;
       settings.user.email = email;
     };
+
+    # jj (Jujutsu) config — user identity + git colocated defaults
+    home.file.".jjconfig.toml".text = ''
+      [user]
+      name = "${realName}"
+      email = "${email}"
+
+      [ui]
+      default-command = "log"
+      diff-editor = ":builtin"
+    '';
 
     programs.tmux = {
       enable = true;
@@ -89,6 +103,7 @@ let
       enableZshIntegration = true;
       nix-direnv.enable = true;
     };
+
   };
 in
 {

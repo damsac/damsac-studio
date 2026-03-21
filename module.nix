@@ -52,6 +52,12 @@ in
       default = false;
       description = "Whether to open the firewall for the damsac-studio port.";
     };
+
+    claudeCode.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether to configure Claude Code MCP integration for this service.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -99,5 +105,29 @@ in
     };
 
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
+
+    # Configure Claude Code MCP client to connect to this service.
+    # Merges into ~/.claude.json so existing user config is preserved.
+    home-manager.sharedModules = lib.mkIf cfg.claudeCode.enable (let
+      apiKey = builtins.head (builtins.map (k: builtins.head (lib.splitString ":" k)) cfg.apiKeys);
+      mcpConfig = builtins.toJSON {
+        mcpServers.damsac-studio = {
+          type = "http";
+          url = "http://localhost:${toString cfg.port}/mcp";
+          headers."X-API-Key" = apiKey;
+        };
+      };
+    in [{
+      home.activation.damsac-mcp = ''
+        CLAUDE_JSON="$HOME/.claude.json"
+        MCP_FRAGMENT='${mcpConfig}'
+        if [ -f "$CLAUDE_JSON" ]; then
+          ${pkgs.jq}/bin/jq -s '.[0] * .[1]' "$CLAUDE_JSON" <(echo "$MCP_FRAGMENT") > "$CLAUDE_JSON.tmp" \
+            && mv "$CLAUDE_JSON.tmp" "$CLAUDE_JSON"
+        else
+          echo "$MCP_FRAGMENT" > "$CLAUDE_JSON"
+        fi
+      '';
+    }]);
   };
 }

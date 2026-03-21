@@ -67,10 +67,6 @@ in
     };
   };
 
-  users.users.root.openssh.authorizedKeys.keys = [
-    (builtins.readFile ./keys/deploy.pub)
-  ];
-
   # --- Locale & Timezone ---
   time.timeZone = "UTC";
   i18n.defaultLocale = "en_US.UTF-8";

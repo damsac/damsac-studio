@@ -35,6 +35,12 @@ func main() {
 	}
 	defer store.Close()
 
+	roDB, err := OpenReadOnlyDB(cfg.DataDir)
+	if err != nil {
+		log.Fatalf("read-only db: %v", err)
+	}
+	defer roDB.Close()
+
 	broker := NewBroker()
 
 	// Parse templates — in dev mode, handlers re-parse from disk on each request.
@@ -121,6 +127,10 @@ func main() {
 	mux.Handle("/dashboard/events", dashAuth(http.HandlerFunc(dashboard.HandleEventsPartial)))
 	mux.Handle("/dashboard", dashAuth(http.HandlerFunc(dashboard.HandleDashboard)))
 	mux.Handle("/projects", dashAuth(http.HandlerFunc(projects.HandleProjects)))
+
+	// MCP endpoint -- protected by API key middleware.
+	mcpHandler := newMCPHandler(roDB)
+	mux.Handle("/mcp", authMiddleware(mcpHandler))
 
 	// Redirect bare /dashboard/ to /dashboard.
 	mux.HandleFunc("/dashboard/", func(w http.ResponseWriter, r *http.Request) {

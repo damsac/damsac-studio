@@ -37,21 +37,27 @@ home-manager.url = "github:nix-community/home-manager";   # Per-user environment
 
 ### File Layout
 
+New NixOS modules go in `modules/` to leverage the existing auto-import pattern in `configuration.nix` (lines 13-21 auto-import all `.nix` files from `modules/`).
+
 ```
 damsac-studio/
 ├── flake.nix                 # Two nixosConfigurations: damsac, damsac-dev
 ├── module.nix                # Prod service module (unchanged)
 ├── module-dev.nix            # Dev service module (air hot reload)
 ├── configuration.nix         # Base config: networking, caddy, boot, firewall
-├── users.nix                 # gudnuf + isaac users, damsac group, SSH keys
-├── workspace.nix             # /srv/damsac/ setup, git clones, permissions
-├── tmux.nix                  # Shared socket, helper scripts, session conventions
-├── home.nix                  # Home Manager: claude-code, dev tools, tmux, git
 ├── disko-config.nix          # Disk layout (unchanged)
+├── modules/
+│   ├── users.nix             # gudnuf + isaac users, damsac group, SSH keys
+│   ├── workspace.nix         # /srv/damsac/ directory, permissions
+│   ├── tmux.nix              # Shared socket, helper scripts, session conventions
+│   └── home.nix              # Home Manager: claude-code, dev tools, tmux, git
 ├── api/                      # Go API (unchanged)
 ├── sdk/swift/                # Swift SDK (unchanged)
+├── .claude/
+│   └── commands/
+│       └── ship.md           # Claude Code slash command for shipping
 └── scripts/
-    ├── deploy.sh             # Updated for new flake shape
+    ├── deploy.sh             # Simplified: SSH + nixos-rebuild (for remote deploy from laptop)
     └── provision.sh          # Updated for new flake shape
 ```
 
@@ -68,10 +74,14 @@ Two human users, both in a `damsac` group:
 
 Both users:
 - Have SSH key-only authentication
-- Are in the `wheel` group (passwordless sudo)
+- Are in the `wheel` group (passwordless sudo — accepted trade-off for a 2-person team on a dev/staging server)
 - Are in the `damsac` group (shared workspace access)
-- Get identical Home Manager environments (Claude Code, dev tools, tmux, git)
-- Configure their own git identity (`user.name`, `user.email`) in their Home Manager config
+- Get identical Home Manager environments via NixOS module integration (Claude Code, dev tools, tmux)
+- Have per-user git identity configured in `modules/home.nix` (separate `programs.git` blocks per user with their own `user.name` and `user.email`)
+
+### Git Authentication
+
+Git clones use SSH URLs (`git@github.com:damsac/...`). Each user has an SSH keypair generated on first login, with the public key added to their GitHub account. This works for both interactive use and detached Claude Code sessions (no browser flow required, no tokens on disk).
 
 ### Shared Workspace
 
@@ -83,7 +93,8 @@ Both users:
 
 - Group `damsac`, permissions `2775` (setgid so new files inherit group)
 - Both users can read/write all files
-- Git clones use HTTPS (no deploy keys needed — both users push with their own GitHub credentials)
+- Workspace directory is created by a systemd-tmpfiles rule (idempotent, survives rebuilds)
+- Git repos are **not** cloned automatically by NixOS — first-time setup is a manual step after provisioning (clone once, then the repos are mutable state managed by the team)
 
 ## tmux Collaboration
 
@@ -123,15 +134,23 @@ Identical to today's hardened service:
 
 ### Dev Mode (`.#damsac-dev`)
 
-- systemd service runs `air` in `/srv/damsac/damsac-studio/api/`
-- Watches for `.go` file changes, auto-rebuilds and restarts
-- Runs as a regular user (needs read/write to the workspace)
-- Same Caddy config — dashboard accessible at the same URL
-- `.air.toml` config already exists in `api/`
+A separate NixOS module (`module-dev.nix`) that replaces the prod service:
+
+- **Service user:** Runs as a dedicated `damsac-dev` system user in the `damsac` group (not `DynamicUser` — needs persistent access to the workspace)
+- **ExecStart:** Runs `air` (from nixpkgs, added to the system profile) in `/srv/damsac/damsac-studio/api/`
+- **Working directory:** `/srv/damsac/damsac-studio/api/`
+- **Environment variables:** Same as prod (`PORT`, `DATA_DIR`, `API_KEYS`, `DASHBOARD_PASSWORD_FILE`) plus `DEV=1`
+- **Hardening:** Drops `ProtectSystem=strict`, `ProtectHome=true`, and `DynamicUser`. Keeps `NoNewPrivileges`.
+- **ReadWritePaths:** `/srv/damsac/damsac-studio/` (for air's tmp directory and file watching)
+- **ReadOnlyPaths:** Dashboard password file (same as prod)
+- **Caddy:** Same config — dashboard accessible at the same URL on `:80`
+- `.air.toml` already exists at `api/.air.toml`
+
+**Known trade-off:** In dev mode, `air` restarts the Go process on every file save. Dashboard sessions are in-memory and will be cleared on restart. SSE connections will drop. This is expected during active development.
 
 ### Mode Switching Aliases
 
-Short aliases in every user's shell (via Home Manager):
+Short aliases in every user's shell (via Home Manager). `nrs` is the same mnemonic used locally for nix-darwin rebuild — intentionally kept consistent ("nix rebuild switch" regardless of platform).
 
 | Alias | Expands to |
 |-------|------------|
@@ -141,16 +160,30 @@ Short aliases in every user's shell (via Home Manager):
 
 ## Ship Workflow
 
-`damsac-ship` is **not** a shell script — it's a Claude Code slash command (`.claude/commands/ship.md`) that orchestrates the full ship process with AI assistance:
+### `/ship` — Claude Code Slash Command
 
-1. **Review** — Claude reviews all staged/unstaged changes against project standards (CLAUDE.md, code style, test coverage)
+`/ship` is a Claude Code slash command (`.claude/commands/ship.md`) that orchestrates the full ship process with AI assistance:
+
+1. **Review** — Claude reviews all staged/unstaged changes against project standards (CLAUDE.md, code style)
 2. **Clean state check** — Ensures no uncommitted work is left behind, no temporary files, no debug code
 3. **Standards enforcement** — Runs `go vet`, `go build`, verifies the API starts cleanly
 4. **Commit** — Claude drafts a commit message following repo conventions, user approves
 5. **Push** — Pushes to GitHub
-6. **Rebuild prod** — Runs `nrs` to rebuild the production NixOS configuration from the newly pushed code
+6. **Rebuild prod** — Runs `nrs` to rebuild the production NixOS configuration
 
-The slash command is designed so Claude Code can run the full pipeline, pausing for human approval at the commit step.
+The slash command pauses for human approval at the commit step.
+
+### Manual Fallback
+
+If Claude Code is unavailable, the same steps can be run manually:
+
+```bash
+go vet ./...
+go build -o /dev/null .
+git add -p && git commit
+git push
+nrs
+```
 
 ### CLAUDE.md Standards
 
@@ -162,15 +195,38 @@ The existing `CLAUDE.md` defines the standards Claude Code uses during review:
 - SQLite gotchas (single connection, WAL pragmas, idempotent inserts)
 - Auth via `crypto/subtle.ConstantTimeCompare`
 
-These standards are enforced during the review step of `damsac-ship`.
+## Home Manager
+
+Home Manager is used as a **NixOS module** (not standalone), integrated via `home-manager.nixosModules.home-manager` in the flake. This keeps user environments in sync with the system configuration on every rebuild.
+
+Each user gets:
+
+**Packages (via Home Manager):**
+- `claude-code` (from the `claude-code-nix` overlay)
+- `git`, `tmux`, `ripgrep`, `fd`, `jq`, `htop`
+- `go`, `air`, `sqlite` (for studio development)
+- `curl`, `wget`
+
+**Programs (via Home Manager):**
+- `programs.git` — per-user `user.name`, `user.email`, SSH signing config
+- `programs.tmux` — shared config with collaboration keybindings
+- `programs.zsh` — shell with aliases (`nrs`, `nrsd`, `nrt`, `dw`, `dp`)
+- `programs.direnv` — per-directory Nix environments
+
+The `claude-code-nix` overlay is applied at the NixOS level (`nixpkgs.overlays`), making `pkgs.claude-code` available to Home Manager.
 
 ## Provisioning
 
-First-time setup remains the same:
+First-time setup:
 
-1. `provision.sh [region]` — Creates Hetzner VPS, installs NixOS via nixos-anywhere
-2. SSH in as root, create dashboard password at `/run/secrets/damsac-dashboard-pw`
-3. First `nixos-rebuild switch` pulls in users, tools, workspace, and clones repos
+1. `provision.sh [region]` — Creates Hetzner VPS, installs NixOS via nixos-anywhere with the new flake
+2. SSH in, create dashboard password at `/run/secrets/damsac-dashboard-pw`
+3. Clone repos into `/srv/damsac/`:
+   ```bash
+   cd /srv/damsac
+   git clone git@github.com:damsac/damsac-studio.git
+   git clone git@github.com:damsac/Murmur.git
+   ```
 4. Each user SSHes in and runs `claude` to authenticate Claude Code
 
 ## Network
@@ -191,5 +247,6 @@ Unchanged from today:
 - Additional app services beyond the studio API
 - CI/CD pipelines running on the server
 - Multi-app orchestration (Slate, future apps)
+- Resource monitoring / capacity planning (upgrade from cpx21 when workload demands it)
 
 These are the direction of travel but not part of this initial build.

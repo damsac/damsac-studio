@@ -334,3 +334,40 @@ final class PersistenceTests: XCTestCase {
         XCTAssertTrue(loaded.isEmpty)
     }
 }
+
+final class AnalyticsEventTests: XCTestCase {
+
+    struct TestEvent: AnalyticsEvent {
+        static let eventName = "test.event"
+        let category: String
+        let count: Int
+    }
+
+    func testAnalyticsEventEncoding() throws {
+        let event = TestEvent(category: "todo", count: 42)
+        XCTAssertEqual(TestEvent.eventName, "test.event")
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(event)
+        let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(dict?["category"] as? String, "todo")
+        XCTAssertEqual(dict?["count"] as? Int, 42)
+    }
+
+    func testEmptyAnalyticsEvent() throws {
+        struct EmptyEvent: AnalyticsEvent {
+            static let eventName = "empty.event"
+        }
+
+        let event = EmptyEvent()
+        XCTAssertEqual(EmptyEvent.eventName, "empty.event")
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(event)
+        let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        XCTAssertNotNil(dict)
+        XCTAssertTrue(dict?.isEmpty ?? false)
+    }
+}

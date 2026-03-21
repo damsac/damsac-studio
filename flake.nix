@@ -19,9 +19,13 @@
       url = "github:gudnuf/mercury";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    holesail = {
+      url = "github:gudnuf/holesail-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, disko, claude-code, home-manager, mercury }:
+  outputs = { self, nixpkgs, flake-utils, disko, claude-code, home-manager, mercury, holesail }:
     let
       lib = nixpkgs.lib;
 
@@ -81,6 +85,7 @@
         modules = [
           disko.nixosModules.disko
           home-manager.nixosModules.home-manager
+          holesail.nixosModules.holesail
           self.nixosModules.default
           {
             nixpkgs.hostPlatform = "x86_64-linux";
@@ -109,6 +114,7 @@
         modules = [
           disko.nixosModules.disko
           home-manager.nixosModules.home-manager
+          holesail.nixosModules.holesail
           self.nixosModules.default
           self.nixosModules.dev
           {

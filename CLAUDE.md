@@ -42,8 +42,8 @@ dp                             # Join/create shared pair session
 - `infra/` — Hetzner secrets (git-ignored)
 - `keys/` — SSH deploy keys (private key git-ignored)
 - `module-dev.nix` — Dev mode service (air hot reload, relaxed hardening)
-- `modules/` — NixOS modules (users, workspace, tmux, home-manager) — auto-imported by configuration.nix
-- `.mcp.json` — MCP server config for Claude Code (gitignored — contains keys)
+- `modules/` — NixOS modules (users, workspace, tmux, home-manager, claude) — auto-imported by configuration.nix
+- `modules/claude.nix` — Declarative Claude Code config (CLAUDE.md, MCP, commands, settings)
 
 ## API Endpoints
 
@@ -71,7 +71,7 @@ Optional: `PORT` (default 8080), `DATA_DIR` (default `.`), `GITHUB_TOKEN`, `DASH
 - `modernc.org/sqlite` strips query params from plain-path DSNs — must use `file:` URI format (e.g. `file:path?mode=ro`) for params to take effect
 - Read-only DB (`OpenReadOnlyDB`) uses DSN-level `_pragma` so pool can have >1 conn (unlike write conn's `MaxOpenConns=1`)
 - Prod is behind Caddy on port 80 — port 8080 is not open externally
-- `.mcp.json` is gitignored (contains API keys and prod IP)
+- Claude Code config is declarative — managed by `modules/claude.nix`, reset on `nrs`/`nrsd`
 
 ## Code Style
 

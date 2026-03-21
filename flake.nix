@@ -73,6 +73,7 @@
       nixosConfigurations.damsac = nixpkgs.lib.nixosSystem {
         modules = [
           disko.nixosModules.disko
+          home-manager.nixosModules.home-manager
           self.nixosModules.default
           {
             nixpkgs.hostPlatform = "x86_64-linux";

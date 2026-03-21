@@ -37,10 +37,10 @@ rsync -az --delete \
   --exclude='docs/' \
   --exclude='.claude/' \
   -e "ssh $SSH_OPTS" \
-  "$PROJECT_DIR/" "root@${HOST}:/etc/nixos/"
+  "$PROJECT_DIR/" "root@${HOST}:/srv/damsac/damsac-studio/"
 
 echo "rebuilding on VPS..."
-ssh $SSH_OPTS "root@${HOST}" "cd /etc/nixos && nixos-rebuild switch --flake .#damsac"
+ssh $SSH_OPTS "root@${HOST}" "cd /srv/damsac/damsac-studio && nixos-rebuild switch --flake .#damsac"
 
 echo ""
 echo "deploy complete. verifying..."

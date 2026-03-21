@@ -8,9 +8,16 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    claude-code = {
+      url = "github:sadjow/claude-code-nix";
+    };
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, disko }:
+  outputs = { self, nixpkgs, flake-utils, disko, claude-code, home-manager }:
     let
       mkPackage = pkgs: pkgs.buildGoModule {
         pname = "damsac-studio";
@@ -69,7 +76,7 @@
           self.nixosModules.default
           {
             nixpkgs.hostPlatform = "x86_64-linux";
-            nixpkgs.overlays = [ overlay ];
+            nixpkgs.overlays = [ overlay claude-code.overlays.default ];
           }
           ./disko-config.nix
           ./configuration.nix

@@ -1,4 +1,8 @@
 import Foundation
+import os.log
+
+/// Shared logger for the StudioAnalytics SDK.
+let saLog = Logger(subsystem: "com.studioanalytics", category: "SDK")
 
 /// StudioAnalytics — Self-hosted analytics SDK for iOS apps.
 ///
@@ -144,6 +148,7 @@ public final class StudioAnalytics: @unchecked Sendable {
         self.appId = appId
 
         guard let endpointURL = URL(string: endpoint) else {
+            saLog.error("invalid endpoint URL: \(endpoint)")
             return
         }
 
@@ -182,6 +187,10 @@ public final class StudioAnalytics: @unchecked Sendable {
         self.session = session
 
         isConfigured = true
+        saLog.info("configured for \(appId) → \(endpoint)")
+
+        // Flush any persisted events from prior sessions immediately
+        queue.requestFlush()
     }
 
     private func trackEvent(_ event: String, properties: [String: Any]) {

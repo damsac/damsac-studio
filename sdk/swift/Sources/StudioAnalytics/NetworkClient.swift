@@ -86,6 +86,7 @@ final class NetworkClient: @unchecked Sendable {
             if let error {
                 self?.recordFailure()
                 sendResult = .networkError(error)
+                saLog.warning("network error: \(error.localizedDescription)")
                 return
             }
 
@@ -107,11 +108,13 @@ final class NetworkClient: @unchecked Sendable {
                 // the server is reachable, but drop the events
                 self?.recordSuccess()
                 sendResult = .clientError(statusCode: statusCode)
+                saLog.warning("client error \(statusCode) — events dropped")
 
             default:
                 // 5xx and other server errors
                 self?.recordFailure()
                 sendResult = .serverError(statusCode: statusCode)
+                saLog.warning("server error \(statusCode) — will retry")
             }
         }
         task.resume()

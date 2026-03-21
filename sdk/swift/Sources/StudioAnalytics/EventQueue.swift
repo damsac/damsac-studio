@@ -90,7 +90,10 @@ final class EventQueue: @unchecked Sendable {
         }
 
         // Don't flush if offline
-        guard connectivityMonitor.isConnected else { return }
+        guard connectivityMonitor.isConnected else {
+            saLog.debug("flush skipped — offline")
+            return
+        }
 
         // First, try to send any persisted batches from previous sessions
         sendPersistedBatches()
@@ -122,6 +125,7 @@ final class EventQueue: @unchecked Sendable {
                 }
                 lock.unlock()
                 if let filename { persistence.deleteBatch(filename: filename) }
+                saLog.info("flushed \(batchSize) events")
 
             case .clientError:
                 // Drop events -- not retryable

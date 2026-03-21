@@ -84,8 +84,13 @@ extension Event {
 
 extension Array where Element == Event {
     /// Serialize an array of events into the batch payload format.
+    /// Includes `app_id` at the top level (from the first event) as required by the ingest API.
     func toBatchJSON() -> [String: Any] {
-        return ["events": self.map { $0.toJSON() }]
+        var payload: [String: Any] = ["events": self.map { $0.toJSON() }]
+        if let appId = self.first?.appId {
+            payload["app_id"] = appId
+        }
+        return payload
     }
 
     /// Serialize to JSON data for POST body.

@@ -6,7 +6,7 @@ import CommonCrypto
 
 /// Gathers device and app context to attach to every event.
 final class DeviceContext: @unchecked Sendable {
-    static let sdkVersion = "0.1.0"
+    static let sdkVersion = "0.2.0"
 
     private let appId: String
     private var cachedContext: [String: Any]?

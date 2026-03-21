@@ -69,6 +69,9 @@
     "virtio_pci" "virtio_blk" "virtio_scsi" "virtio_net" "ahci"
   ];
 
+  # --- Nix ---
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
   # --- System ---
   system.stateVersion = "24.11";
 }

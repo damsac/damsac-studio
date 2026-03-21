@@ -27,10 +27,6 @@
     </div>
 
     <form class="filter-bar" hx-get="/dashboard/events" hx-target="#events-table" hx-push-url="false">
-        <div class="filter-search">
-            <input type="text" name="search" value="{{.ActiveSearch}}" placeholder="search events..." autocomplete="off"
-                   hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="keyup changed delay:300ms" hx-include="closest form">
-        </div>
         <div class="filter-controls">
             <select name="app_id" hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
                 <option value="">all apps</option>

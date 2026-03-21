@@ -121,7 +121,6 @@ type eventsPageData struct {
 	ActiveEvent  string
 	ActiveFrom   string
 	ActiveTo     string
-	ActiveSearch string
 	Page         int
 	PrevPage     int
 	NextPage     int
@@ -171,7 +170,7 @@ func (d *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Reques
 		ActiveEvent:  filters.EventType,
 		ActiveFrom:   r.URL.Query().Get("from"),
 		ActiveTo:     r.URL.Query().Get("to"),
-		ActiveSearch: filters.Search,
+
 		Page:         page,
 		PrevPage:     page - 1,
 		NextPage:     page + 1,
@@ -213,7 +212,7 @@ func (d *DashboardHandler) HandleEventsPartial(w http.ResponseWriter, r *http.Re
 
 	data := eventsPageData{
 		Events:       views,
-		ActiveSearch: filters.Search,
+
 		Page:         page,
 		PrevPage:     page - 1,
 		NextPage:     page + 1,
@@ -337,7 +336,6 @@ func (d *DashboardHandler) parseFilters(r *http.Request) (EventFilters, int) {
 		EventType: q.Get("event"),
 		From:      from,
 		To:        to,
-		Search:    strings.TrimSpace(q.Get("search")),
 	}, page
 }
 
@@ -355,9 +353,6 @@ func (d *DashboardHandler) filterQueryString(f EventFilters) string {
 	}
 	if f.To != "" {
 		parts = append(parts, "&to="+url.QueryEscape(f.To))
-	}
-	if f.Search != "" {
-		parts = append(parts, "&search="+url.QueryEscape(f.Search))
 	}
 	return strings.Join(parts, "")
 }

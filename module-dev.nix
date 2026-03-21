@@ -63,7 +63,7 @@ in
         DASHBOARD_PASSWORD_FILE = toString cfg.dashboardPasswordFile;
       };
 
-      path = [ pkgs.go pkgs.git ];
+      path = [ pkgs.go pkgs.git pkgs.gcc ];
 
       serviceConfig = {
         # Fix ownership when switching from prod (DynamicUser) to dev mode

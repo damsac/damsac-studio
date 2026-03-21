@@ -1,12 +1,4 @@
 { config, pkgs, lib, ... }:
-
-let
-  # -----------------------------------------------------------------------
-  # Set your domain here. Once DNS points to the VPS, Caddy auto-provisions
-  # TLS. Until then, access the dashboard at http://<VPS_IP>.
-  # -----------------------------------------------------------------------
-  domain = ":80"; # e.g., "analytics.yourdomain.com"
-in
 {
   # Auto-import all .nix files from modules/ — drop new service modules
   # here and redeploy to add services to the VPS.
@@ -20,20 +12,10 @@ in
             (builtins.readDir modulesDir)))
     else [];
 
-  # --- damsac-studio analytics service ---
-  services.damsac-studio = {
-    enable = true;
-    port = 8080;
-    dataDir = "/var/lib/damsac-studio";
-    apiKeys = [ "sk_murmur:murmur-ios" ];
-    dashboardPasswordFile = "/run/secrets/damsac-dashboard-pw";
-    secureCookie = domain != ":80"; # only set Secure flag when using a real domain (HTTPS)
-  };
-
   # --- Caddy: reverse proxy with auto TLS ---
   services.caddy = {
     enable = true;
-    virtualHosts.${domain} = {
+    virtualHosts.":80" = {
       extraConfig = ''
         reverse_proxy localhost:8080
       '';

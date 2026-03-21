@@ -19,6 +19,8 @@
 
   outputs = { self, nixpkgs, flake-utils, disko, claude-code, home-manager }:
     let
+      lib = nixpkgs.lib;
+
       mkPackage = pkgs: pkgs.buildGoModule {
         pname = "damsac-studio";
         version = "0.1.0";
@@ -69,6 +71,7 @@
     ) // {
       overlays.default = overlay;
       nixosModules.default = import ./module.nix;
+      nixosModules.dev = import ./module-dev.nix;
 
       nixosConfigurations.damsac = nixpkgs.lib.nixosSystem {
         modules = [
@@ -80,6 +83,39 @@
             nixpkgs.overlays = [ overlay claude-code.overlays.default ];
             nixpkgs.config.allowUnfreePredicate = pkg:
               builtins.elem (nixpkgs.lib.getName pkg) [ "claude-code" ];
+            services.damsac-studio = {
+              enable = true;
+              port = 8080;
+              dataDir = "/var/lib/damsac-studio";
+              apiKeys = [ "sk_murmur:murmur-ios" ];
+              dashboardPasswordFile = "/run/secrets/damsac-dashboard-pw";
+              secureCookie = false;
+            };
+          }
+          ./disko-config.nix
+          ./configuration.nix
+        ];
+      };
+
+      nixosConfigurations.damsac-dev = nixpkgs.lib.nixosSystem {
+        modules = [
+          disko.nixosModules.disko
+          home-manager.nixosModules.home-manager
+          self.nixosModules.default
+          self.nixosModules.dev
+          {
+            nixpkgs.hostPlatform = "x86_64-linux";
+            nixpkgs.overlays = [ overlay claude-code.overlays.default ];
+            nixpkgs.config.allowUnfreePredicate = pkg:
+              builtins.elem (nixpkgs.lib.getName pkg) [ "claude-code" ];
+            services.damsac-studio.enable = lib.mkForce false;
+            services.damsac-studio-dev = {
+              enable = true;
+              port = 8080;
+              dataDir = "/var/lib/damsac-studio";
+              apiKeys = [ "sk_murmur:murmur-ios" ];
+              dashboardPasswordFile = "/run/secrets/damsac-dashboard-pw";
+            };
           }
           ./disko-config.nix
           ./configuration.nix

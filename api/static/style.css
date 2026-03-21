@@ -213,27 +213,6 @@ main {
     border-radius: var(--radius);
     padding: 12px 16px;
     margin-bottom: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.filter-search input {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 8px 12px;
-    color: var(--text);
-    font-size: 14px;
-    font-family: var(--mono);
-    outline: none;
-}
-.filter-search input::placeholder {
-    color: var(--text-muted);
-}
-.filter-search input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 .filter-controls {
     display: flex;
@@ -276,10 +255,24 @@ main {
     align-items: center;
     padding: 0 4px 8px;
 }
+.table-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .result-count {
     font-size: 12px;
     color: var(--text-muted);
     font-family: var(--mono);
+}
+.active-badge {
+    display: inline-block;
+    background: var(--accent-subtle);
+    color: var(--accent);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
 }
 
 /* --- Table --- */
@@ -319,6 +312,11 @@ td.ts {
     font-family: var(--mono);
     font-size: 12px;
 }
+td.ts.ts-delta {
+    padding-left: 24px;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
 td.app {
     white-space: nowrap;
     font-family: var(--mono);
@@ -351,6 +349,91 @@ td.cost {
     font-family: var(--mono);
     font-size: 12px;
     color: var(--text-muted);
+}
+td.model {
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+td.tokens {
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: right;
+}
+
+/* --- Column visibility --- */
+/* LLM-only columns hidden by default */
+.col-model,
+.col-tokens-in,
+.col-tokens-out {
+    display: none;
+}
+/* Show LLM columns when filtered to llm.request */
+.llm-view .col-model,
+.llm-view .col-tokens-in,
+.llm-view .col-tokens-out {
+    display: table-cell;
+}
+/* Hide app column when filtered by app */
+.filtered-app .col-app {
+    display: none;
+}
+/* Hide event column when filtered by event */
+.filtered-event .col-event {
+    display: none;
+}
+/* Hide user column when filtered by user */
+.filtered-user .col-user {
+    display: none;
+}
+
+/* --- User column --- */
+td.user {
+    white-space: nowrap;
+}
+.user-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-decoration: none;
+    opacity: 0.5;
+    cursor: pointer;
+}
+.user-link:hover {
+    opacity: 1;
+    color: var(--accent);
+}
+.badge-clear {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    margin-left: 4px;
+    opacity: 0.6;
+}
+.badge-clear:hover {
+    opacity: 1;
+}
+
+/* --- Grouped rows --- */
+.grouped td {
+    border-left: 2px solid var(--accent);
+}
+.grouped-first td {
+    border-bottom-color: transparent;
+}
+.grouped-detail.grouped-first td {
+    border-bottom-color: transparent;
+}
+.grouped-mid td {
+    border-bottom-color: transparent;
+}
+.grouped-detail.grouped-mid td {
+    border-bottom-color: transparent;
+}
+.grouped-last td {
+    border-bottom: 1px solid var(--border);
 }
 
 /* --- Event detail --- */

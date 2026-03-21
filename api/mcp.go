@@ -5,7 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 const maxRows = 1000
@@ -175,4 +179,79 @@ func executeQuery(ctx context.Context, db *sql.DB, query string) (string, error)
 	}
 
 	return result, nil
+}
+
+// QueryInput is the input schema for the query tool.
+type QueryInput struct {
+	SQL string `json:"sql" jsonschema:"A SQL SELECT statement to execute against the analytics database"`
+}
+
+const toolDescription = `Query the damsac-studio analytics database. Returns JSON rows.
+
+Schema:
+  events (
+    id TEXT PRIMARY KEY,          -- UUID
+    app_id TEXT NOT NULL,         -- e.g. "murmur-ios"
+    event TEXT NOT NULL,          -- e.g. "llm.request", "credits.charged", "entry.created"
+    timestamp TEXT NOT NULL,      -- RFC3339
+    properties TEXT DEFAULT '{}', -- JSON: cost_micros, tokens_in, tokens_out, model, request_id, etc.
+    context TEXT DEFAULT '{}',    -- JSON: device_id, app_version, os_version, etc.
+    created_at TEXT NOT NULL      -- server receive time
+  )
+
+  Indexes: (timestamp), (app_id, timestamp), (event, timestamp)
+
+  Common properties by event type:
+    llm.request: cost_micros, tokens_in, tokens_out, model, request_id, call_type, latency_ms
+    credits.charged: credits, balance_after, request_id
+    entry.created: (varies)
+
+  Use json_extract() for properties/context fields.
+  Example: SELECT json_extract(properties, '$.cost_micros') FROM events WHERE event = 'llm.request'`
+
+// newMCPHandler creates the MCP Streamable HTTP handler with the query tool registered.
+func newMCPHandler(db *sql.DB) http.Handler {
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "damsac-studio",
+		Version: "0.1.0",
+	}, nil)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "query",
+		Description: toolDescription,
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input QueryInput) (*mcp.CallToolResult, any, error) {
+		if err := validateQuery(input.SQL); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Error: %v", err)},
+				},
+				IsError: true,
+			}, nil, nil
+		}
+
+		queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		result, err := executeQuery(queryCtx, db, input.SQL)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Error: %v", err)},
+				},
+				IsError: true,
+			}, nil, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: result},
+			},
+		}, nil, nil
+	})
+
+	return mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
+		return server
+	}, &mcp.StreamableHTTPOptions{
+		Stateless: true,
+	})
 }

@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -242,5 +245,45 @@ func TestExecuteQuery_RowLimit(t *testing.T) {
 	}
 	if len(rows) != maxRows {
 		t.Errorf("expected %d rows (capped), got %d", maxRows, len(rows))
+	}
+}
+
+// --- MCP handler tests (Task 5) ---
+
+func TestMCPHandler_AuthReject(t *testing.T) {
+	db := setupTestDB(t)
+	keys := map[string]string{"testkey": "test-app"}
+	authMW := APIKeyAuth(keys)
+	handler := authMW(newMCPHandler(db))
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestMCPHandler_Initialize(t *testing.T) {
+	db := setupTestDB(t)
+	handler := newMCPHandler(db)
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		body, _ := io.ReadAll(w.Body)
+		t.Fatalf("expected 200, got %d: %s", w.Code, body)
+	}
+
+	body, _ := io.ReadAll(w.Body)
+	if !strings.Contains(string(body), "damsac-studio") {
+		t.Errorf("expected server name in response, got: %s", body)
 	}
 }

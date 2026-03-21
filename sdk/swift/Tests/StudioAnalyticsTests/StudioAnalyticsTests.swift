@@ -375,3 +375,93 @@ final class AnalyticsEventTests: XCTestCase {
         XCTAssertTrue(dict?.isEmpty ?? false)
     }
 }
+
+final class LLMRequestEventTests: XCTestCase {
+
+    func testLLMRequestEventEncoding() throws {
+        let requestId = UUID()
+        let conversationId = UUID()
+
+        var event = LLMRequestEvent(
+            requestId: requestId,
+            conversationId: conversationId,
+            callType: "agent",
+            tokensIn: 3200,
+            tokensOut: 580,
+            model: "anthropic/claude-haiku-4.5",
+            costMicros: 6402,
+            latencyMs: 1850,
+            streaming: true,
+            turnNumber: 2,
+            conversationMessages: 7,
+            toolCalls: ["create_entries", "update_memory", "update_layout"],
+            actionCount: 5,
+            parseFailureCount: 0,
+            hasTextResponse: false
+        )
+        event.ttftMs = 290
+        event.variant = "scanner"
+
+        XCTAssertEqual(LLMRequestEvent.eventName, "llm.request")
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(event)
+        let dict = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertEqual(dict["request_id"] as? String, requestId.uuidString)
+        XCTAssertEqual(dict["conversation_id"] as? String, conversationId.uuidString)
+        XCTAssertEqual(dict["call_type"] as? String, "agent")
+        XCTAssertEqual(dict["tokens_in"] as? Int, 3200)
+        XCTAssertEqual(dict["tokens_out"] as? Int, 580)
+        XCTAssertEqual(dict["model"] as? String, "anthropic/claude-haiku-4.5")
+        XCTAssertEqual(dict["cost_micros"] as? Int, 6402)
+        XCTAssertEqual(dict["latency_ms"] as? Int, 1850)
+        XCTAssertEqual(dict["streaming"] as? Bool, true)
+        XCTAssertEqual(dict["turn_number"] as? Int, 2)
+        XCTAssertEqual(dict["conversation_messages"] as? Int, 7)
+        XCTAssertEqual(dict["tool_calls"] as? [String], ["create_entries", "update_memory", "update_layout"])
+        XCTAssertEqual(dict["tool_call_count"] as? Int, 3)
+        XCTAssertEqual(dict["action_count"] as? Int, 5)
+        XCTAssertEqual(dict["parse_failure_count"] as? Int, 0)
+        XCTAssertEqual(dict["has_text_response"] as? Bool, false)
+        XCTAssertEqual(dict["ttft_ms"] as? Int, 290)
+        XCTAssertEqual(dict["variant"] as? String, "scanner")
+        XCTAssertNil(dict["items_count"])
+        XCTAssertNil(dict["error"])
+        XCTAssertNil(dict["error_status_code"])
+    }
+
+    func testLLMRequestEventOptionalFields() throws {
+        let event = LLMRequestEvent(
+            requestId: UUID(),
+            conversationId: UUID(),
+            callType: "composition",
+            tokensIn: 100,
+            tokensOut: 50,
+            model: "test",
+            costMicros: 0,
+            latencyMs: 500,
+            streaming: false,
+            turnNumber: 1,
+            conversationMessages: 2,
+            toolCalls: [],
+            actionCount: 0,
+            parseFailureCount: 0,
+            hasTextResponse: true
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(event)
+        let dict = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        // Optional fields should be absent when nil
+        XCTAssertNil(dict["ttft_ms"])
+        XCTAssertNil(dict["variant"])
+        XCTAssertNil(dict["items_count"])
+        XCTAssertNil(dict["error"])
+        XCTAssertNil(dict["error_status_code"])
+
+        // tool_call_count should be 0 for empty array
+        XCTAssertEqual(dict["tool_call_count"] as? Int, 0)
+    }
+}

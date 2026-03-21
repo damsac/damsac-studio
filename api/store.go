@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -147,7 +148,7 @@ type EventFilters struct {
 	EventType string
 	From      string // RFC3339
 	To        string // RFC3339
-	Search    string // free-text search across properties, context, event, app_id
+	DeviceID  string
 }
 
 // QueryEvents returns events matching the given filters, paginated.
@@ -172,10 +173,9 @@ func (s *Store) QueryEvents(filters EventFilters, page, pageSize int) ([]StoredE
 		clauses = append(clauses, "timestamp <= ?")
 		args = append(args, filters.To)
 	}
-	if filters.Search != "" {
-		like := "%" + filters.Search + "%"
-		clauses = append(clauses, "(properties LIKE ? OR context LIKE ? OR event LIKE ? OR app_id LIKE ? OR id LIKE ?)")
-		args = append(args, like, like, like, like, like)
+	if filters.DeviceID != "" {
+		clauses = append(clauses, "json_extract(context, '$.device_id') = ?")
+		args = append(args, filters.DeviceID)
 	}
 
 	query := "SELECT id, app_id, event, timestamp, properties, context, created_at FROM events"
@@ -226,10 +226,9 @@ func (s *Store) CountEvents(filters EventFilters) (int, error) {
 		clauses = append(clauses, "timestamp <= ?")
 		args = append(args, filters.To)
 	}
-	if filters.Search != "" {
-		like := "%" + filters.Search + "%"
-		clauses = append(clauses, "(properties LIKE ? OR context LIKE ? OR event LIKE ? OR app_id LIKE ? OR id LIKE ?)")
-		args = append(args, like, like, like, like, like)
+	if filters.DeviceID != "" {
+		clauses = append(clauses, "json_extract(context, '$.device_id') = ?")
+		args = append(args, filters.DeviceID)
 	}
 
 	query := "SELECT COUNT(*) FROM events"
@@ -352,4 +351,32 @@ func (s *Store) TokensByDayHour() (map[[2]int]int64, error) {
 // Close closes the underlying database connection.
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// OpenReadOnlyDB opens a read-only connection to the SQLite database.
+// Must be called after OpenStore (which creates the file and runs migrations).
+// Returns a raw *sql.DB — not a Store — since no writes are possible.
+func OpenReadOnlyDB(dataDir string) (*sql.DB, error) {
+	dbPath := filepath.Join(dataDir, "studio.db")
+
+	// Verify the file exists before opening (mode=ro won't create it,
+	// but we want a clear error message).
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, fmt.Errorf("read-only db: %w", err)
+	}
+
+	// file: URI format is required for modernc.org/sqlite to honor query params.
+	// _pragma params are applied per-connection, so the pool can have >1 conn.
+	dsn := fmt.Sprintf("file:%s?mode=ro&_pragma=busy_timeout(5000)", dbPath)
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open read-only db: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping read-only db: %w", err)
+	}
+
+	return db, nil
 }

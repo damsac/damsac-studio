@@ -19,7 +19,7 @@ The SDK's public API is untyped. Events are tracked via `track(_ event: String, 
 The SDK defines a single protocol. An event *is* its properties — no nesting, no wrapper:
 
 ```swift
-public protocol AnalyticsEvent: Codable, Sendable {
+public protocol AnalyticsEvent: Encodable, Sendable {
     static var eventName: String { get }
 }
 ```
@@ -118,7 +118,7 @@ struct EntryDeleted: AnalyticsEvent {
 
 struct CreditCharged: AnalyticsEvent {
     static let eventName = "credits.charged"
-    let requestId: UUID
+    let requestId: String  // UUID string — preserves uppercase wire format
     let credits: Int64
     let balanceAfter: Int64
 }
@@ -139,7 +139,7 @@ struct CreditCharged: AnalyticsEvent {
 
 The internal `Event` struct changes `properties` from `[String: Any]` to `Data` (raw JSON bytes from `JSONEncoder`). When assembling batch payloads, properties `Data` is deserialized back to `[String: Any]` via `JSONSerialization` for inclusion in the batch dictionary. This avoids needing a custom `AnyCodableValue` type.
 
-The `session.start` event emitted internally by `Session` becomes a private `SessionStartEvent` struct conforming to `AnalyticsEvent`.
+The `session.start` event has no properties, so `emitSessionStart` constructs an `Event` directly with default empty properties (`Data("{}".utf8)`). No dedicated struct needed.
 
 This is an atomic change across both repos — the SDK and Murmur are updated together. There is no phased migration since Murmur is the only consumer.
 

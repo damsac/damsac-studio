@@ -26,33 +26,51 @@
         </div>
     </div>
 
-    <div class="filters">
-        <form hx-get="/dashboard/events" hx-target="#events-table" hx-push-url="false">
-            <select name="app_id">
+    <form class="filter-bar" hx-get="/dashboard/events" hx-target="#events-table" hx-push-url="false">
+        <div class="filter-search">
+            <input type="text" name="search" value="{{.ActiveSearch}}" placeholder="search events..." autocomplete="off"
+                   hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="keyup changed delay:300ms" hx-include="closest form">
+        </div>
+        <div class="filter-controls">
+            <select name="app_id" hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
                 <option value="">all apps</option>
                 {{range .AppIDs}}
                 <option value="{{.}}" {{if eq . $.ActiveAppID}}selected{{end}}>{{.}}</option>
                 {{end}}
             </select>
-            <select name="event">
+            <select name="event" hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
                 <option value="">all events</option>
                 {{range .EventTypes}}
                 <option value="{{.}}" {{if eq . $.ActiveEvent}}selected{{end}}>{{.}}</option>
                 {{end}}
             </select>
-            <input type="datetime-local" name="from" value="{{.ActiveFrom}}" placeholder="from">
-            <input type="datetime-local" name="to" value="{{.ActiveTo}}" placeholder="to">
-            <button type="submit">apply</button>
-        </form>
-    </div>
+            <input type="datetime-local" name="from" value="{{.ActiveFrom}}" placeholder="from"
+                   hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
+            <input type="datetime-local" name="to" value="{{.ActiveTo}}" placeholder="to"
+                   hx-get="/dashboard/events" hx-target="#events-table" hx-trigger="change" hx-include="closest form">
+            <a href="/dashboard" class="filter-clear">clear</a>
+        </div>
+    </form>
 
     <div id="events-table">
         {{template "events_table" .}}
     </div>
 </div>
+<script>
+document.addEventListener('keydown', function(e) {
+    if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        document.querySelector('.filter-search input').focus();
+    }
+});
+</script>
 {{end}}
 
 {{define "events_table"}}
+<div class="table-header">
+    <span class="result-count">{{.TotalCount}} event{{if ne .TotalCount 1}}s{{end}}</span>
+    <span class="page-info">page {{.Page}}</span>
+</div>
 <div class="table-wrap" hx-ext="sse" sse-connect="/dashboard/events/stream">
     <table>
         <thead>
@@ -60,7 +78,8 @@
                 <th>timestamp</th>
                 <th>app</th>
                 <th>event</th>
-                <th>properties</th>
+                <th>call type</th>
+                <th>cost</th>
             </tr>
         </thead>
         <tbody id="events-body" sse-swap="new-events" hx-swap="afterbegin">

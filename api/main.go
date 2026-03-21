@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var devMode = os.Getenv("DEV") == "1"
+
 //go:embed templates/*.html
 var templateFS embed.FS
 
@@ -35,25 +37,36 @@ func main() {
 
 	broker := NewBroker()
 
-	// Parse templates.
-	tmpl, err := template.ParseFS(templateFS,
-		"templates/layout.html",
-		"templates/events.html",
-		"templates/event_row.html",
-		"templates/event_detail.html",
-	)
-	if err != nil {
-		log.Fatalf("templates: %v", err)
-	}
+	// Parse templates — in dev mode, handlers re-parse from disk on each request.
+	var tmpl *template.Template
+	var projectsTmpl *template.Template
+	if !devMode {
+		tmpl, err = template.ParseFS(templateFS,
+			"templates/layout.html",
+			"templates/events.html",
+			"templates/event_row.html",
+			"templates/event_detail.html",
+		)
+		if err != nil {
+			log.Fatalf("templates: %v", err)
+		}
 
-	// Parse login template separately (it has its own full HTML structure).
-	loginTmpl, err := template.ParseFS(templateFS, "templates/login.html")
-	if err != nil {
-		log.Fatalf("login template: %v", err)
-	}
+		projectsTmpl, err = template.ParseFS(templateFS,
+			"templates/layout.html",
+			"templates/projects.html",
+		)
+		if err != nil {
+			log.Fatalf("projects templates: %v", err)
+		}
 
-	// Set the package-level login template for use by renderLogin.
-	loginTemplate = loginTmpl
+		loginTmpl, err := template.ParseFS(templateFS, "templates/login.html")
+		if err != nil {
+			log.Fatalf("login template: %v", err)
+		}
+		loginTemplate = loginTmpl
+	} else {
+		log.Println("DEV mode: templates and static files served from disk")
+	}
 
 	ingest := &IngestHandler{
 		store:  store,
@@ -64,6 +77,11 @@ func main() {
 		store:  store,
 		broker: broker,
 		tmpl:   tmpl,
+	}
+
+	projects := &ProjectsHandler{
+		tmpl:        projectsTmpl,
+		githubToken: cfg.GitHubToken,
 	}
 
 	sessions := NewSessionStore(24 * time.Hour)
@@ -82,11 +100,15 @@ func main() {
 	mux.Handle("/v1/events", authMiddleware(ingest))
 
 	// Static files -- unauthenticated (CSS, JS).
-	staticSub, err := fs.Sub(staticFS, "static")
-	if err != nil {
-		log.Fatalf("static fs: %v", err)
+	if devMode {
+		mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	} else {
+		staticSub, err := fs.Sub(staticFS, "static")
+		if err != nil {
+			log.Fatalf("static fs: %v", err)
+		}
+		mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 	}
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 
 	// Dashboard login/logout -- unauthenticated.
 	mux.HandleFunc("/dashboard/login", HandleLogin(sessions, cfg.DashboardPasswordFile, isSecure))
@@ -98,6 +120,7 @@ func main() {
 	mux.Handle("/dashboard/events/", dashAuth(http.HandlerFunc(dashboard.HandleEventDetail)))
 	mux.Handle("/dashboard/events", dashAuth(http.HandlerFunc(dashboard.HandleEventsPartial)))
 	mux.Handle("/dashboard", dashAuth(http.HandlerFunc(dashboard.HandleDashboard)))
+	mux.Handle("/projects", dashAuth(http.HandlerFunc(projects.HandleProjects)))
 
 	// Redirect bare /dashboard/ to /dashboard.
 	mux.HandleFunc("/dashboard/", func(w http.ResponseWriter, r *http.Request) {

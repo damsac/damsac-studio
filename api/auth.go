@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -141,8 +142,17 @@ var loginTemplate *template.Template
 func renderLogin(w http.ResponseWriter, errMsg string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := struct{ Error string }{Error: errMsg}
-	if loginTemplate != nil {
-		loginTemplate.Execute(w, data)
+	tmpl := loginTemplate
+	if devMode {
+		t, err := template.ParseFiles("templates/login.html")
+		if err != nil {
+			log.Printf("login: dev parse template: %v", err)
+		} else {
+			tmpl = t
+		}
+	}
+	if tmpl != nil {
+		tmpl.Execute(w, data)
 	} else {
 		http.Error(w, "login template not loaded", http.StatusInternalServerError)
 	}

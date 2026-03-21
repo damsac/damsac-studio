@@ -1,0 +1,71 @@
+{{define "content"}}
+<div class="projects-page">
+    {{if .Error}}
+    <div class="projects-error">{{.Error}}</div>
+    {{else}}
+    <h1 class="project-title">{{.Title}}</h1>
+
+    <div class="status-row">
+        <div class="status-card status-progress">
+            <span class="status-count">{{len .InProgress}}</span>
+            <span class="status-label">in progress</span>
+        </div>
+        <div class="status-card status-todo">
+            <span class="status-count">{{len .Todo}}</span>
+            <span class="status-label">todo</span>
+        </div>
+        <div class="status-card status-backlog">
+            <span class="status-count">{{len .Backlog}}</span>
+            <span class="status-label">backlog</span>
+        </div>
+        <div class="status-card status-done">
+            <span class="status-count">{{.Done}}</span>
+            <span class="status-label">done</span>
+        </div>
+    </div>
+
+    {{if .InProgress}}
+    <section class="item-section">
+        <h2>In Progress</h2>
+        <ul class="item-list">
+            {{range .InProgress}}
+            <li>
+                {{if .URL}}<a href="{{.URL}}" target="_blank">{{.Title}}</a>
+                {{else}}<span>{{.Title}}</span>{{end}}
+            </li>
+            {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if .Todo}}
+    <section class="item-section">
+        <h2>Up Next</h2>
+        <ul class="item-list">
+            {{range .Todo}}
+            <li>
+                {{if .URL}}<a href="{{.URL}}" target="_blank">{{.Title}}</a>
+                {{else}}<span>{{.Title}}</span>{{end}}
+            </li>
+            {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if .Backlog}}
+    <section class="item-section">
+        <h2>Backlog</h2>
+        <ul class="item-list">
+            {{range .Backlog}}
+            <li>
+                {{if .URL}}<a href="{{.URL}}" target="_blank">{{.Title}}</a>
+                {{else}}<span>{{.Title}}</span>{{end}}
+            </li>
+            {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{end}}
+</div>
+{{end}}

@@ -12,6 +12,7 @@ type Config struct {
 	DataDir               string
 	APIKeys               map[string]string // key -> app_id
 	DashboardPasswordFile string
+	GitHubToken           string // optional, enables /projects
 }
 
 // LoadConfig reads configuration from environment variables.
@@ -61,5 +62,6 @@ func LoadConfig() (*Config, error) {
 		DataDir:               dataDir,
 		APIKeys:               apiKeys,
 		DashboardPasswordFile: dashPwFile,
+		GitHubToken:           os.Getenv("GITHUB_TOKEN"),
 	}, nil
 }

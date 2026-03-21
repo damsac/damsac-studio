@@ -147,6 +147,7 @@ type EventFilters struct {
 	EventType string
 	From      string // RFC3339
 	To        string // RFC3339
+	Search    string // free-text search across properties, context, event, app_id
 }
 
 // QueryEvents returns events matching the given filters, paginated.
@@ -170,6 +171,11 @@ func (s *Store) QueryEvents(filters EventFilters, page, pageSize int) ([]StoredE
 	if filters.To != "" {
 		clauses = append(clauses, "timestamp <= ?")
 		args = append(args, filters.To)
+	}
+	if filters.Search != "" {
+		like := "%" + filters.Search + "%"
+		clauses = append(clauses, "(properties LIKE ? OR context LIKE ? OR event LIKE ? OR app_id LIKE ? OR id LIKE ?)")
+		args = append(args, like, like, like, like, like)
 	}
 
 	query := "SELECT id, app_id, event, timestamp, properties, context, created_at FROM events"
@@ -197,6 +203,43 @@ func (s *Store) QueryEvents(filters EventFilters, page, pageSize int) ([]StoredE
 		events = append(events, e)
 	}
 	return events, rows.Err()
+}
+
+// CountEvents returns the total number of events matching the given filters.
+func (s *Store) CountEvents(filters EventFilters) (int, error) {
+	var clauses []string
+	var args []interface{}
+
+	if filters.AppID != "" {
+		clauses = append(clauses, "app_id = ?")
+		args = append(args, filters.AppID)
+	}
+	if filters.EventType != "" {
+		clauses = append(clauses, "event = ?")
+		args = append(args, filters.EventType)
+	}
+	if filters.From != "" {
+		clauses = append(clauses, "timestamp >= ?")
+		args = append(args, filters.From)
+	}
+	if filters.To != "" {
+		clauses = append(clauses, "timestamp <= ?")
+		args = append(args, filters.To)
+	}
+	if filters.Search != "" {
+		like := "%" + filters.Search + "%"
+		clauses = append(clauses, "(properties LIKE ? OR context LIKE ? OR event LIKE ? OR app_id LIKE ? OR id LIKE ?)")
+		args = append(args, like, like, like, like, like)
+	}
+
+	query := "SELECT COUNT(*) FROM events"
+	if len(clauses) > 0 {
+		query += " WHERE " + strings.Join(clauses, " AND ")
+	}
+
+	var count int
+	err := s.db.QueryRow(query, args...).Scan(&count)
+	return count, err
 }
 
 // GetEvent returns a single event by ID.

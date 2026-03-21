@@ -24,21 +24,23 @@ type DashboardHandler struct {
 
 // eventView is the template-friendly representation of a stored event.
 type eventView struct {
-	ID                string
-	AppID             string
-	EventName         string
-	Timestamp         string
-	Properties        string
-	Context           string
-	CreatedAt         string
-	FormattedTime     string
-	PropertiesPreview string
+	ID                  string
+	AppID               string
+	EventName           string
+	Timestamp           string
+	Properties          string
+	Context             string
+	CreatedAt           string
+	FormattedTime       string
+	PropertiesPreview   string
 	PropertiesFormatted string
 	ContextFormatted    string
+	Cost                string // formatted dollar amount, empty for non-LLM events
+	CallType            string // e.g. "agent", "extraction", empty for non-LLM events
 }
 
 func newEventView(e StoredEvent) eventView {
-	return eventView{
+	v := eventView{
 		ID:                  e.ID,
 		AppID:               e.AppID,
 		EventName:           e.EventName,
@@ -51,10 +53,12 @@ func newEventView(e StoredEvent) eventView {
 		PropertiesFormatted: prettyJSON(e.Properties),
 		ContextFormatted:    prettyJSON(e.Context),
 	}
+	extractLLMFields(&v, e.Properties)
+	return v
 }
 
 func newEventViewFromEvent(e Event) eventView {
-	return eventView{
+	v := eventView{
 		ID:                  e.ID,
 		AppID:               e.AppID,
 		EventName:           e.EventName,
@@ -65,6 +69,25 @@ func newEventViewFromEvent(e Event) eventView {
 		PropertiesPreview:   truncate(flatJSON(e.Properties), 80),
 		PropertiesFormatted: prettyJSON(e.Properties),
 		ContextFormatted:    prettyJSON(e.Context),
+	}
+	extractLLMFields(&v, e.Properties)
+	return v
+}
+
+// extractLLMFields parses cost and call_type from properties JSON into the view.
+func extractLLMFields(v *eventView, propsJSON string) {
+	var props struct {
+		CostMicros *int64  `json:"cost_micros"`
+		CallType   *string `json:"call_type"`
+	}
+	if json.Unmarshal([]byte(propsJSON), &props) != nil {
+		return
+	}
+	if props.CostMicros != nil {
+		v.Cost = formatCost(*props.CostMicros)
+	}
+	if props.CallType != nil {
+		v.CallType = *props.CallType
 	}
 }
 
@@ -90,19 +113,21 @@ type HeatmapCell struct {
 
 // eventsPageData is the data passed to the events.html template.
 type eventsPageData struct {
-	Metrics     DashboardMetrics
-	Events      []eventView
-	AppIDs      []string
-	EventTypes  []string
-	ActiveAppID string
-	ActiveEvent string
-	ActiveFrom  string
-	ActiveTo    string
-	Page        int
-	PrevPage    int
-	NextPage    int
-	HasMore     bool
-	FilterQuery string
+	Metrics      DashboardMetrics
+	Events       []eventView
+	AppIDs       []string
+	EventTypes   []string
+	ActiveAppID  string
+	ActiveEvent  string
+	ActiveFrom   string
+	ActiveTo     string
+	ActiveSearch string
+	Page         int
+	PrevPage     int
+	NextPage     int
+	HasMore      bool
+	TotalCount   int
+	FilterQuery  string
 }
 
 // HandleDashboard serves the main dashboard page.
@@ -130,6 +155,7 @@ func (d *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Reques
 	appIDs, _ := d.store.GetDistinctAppIDs()
 	eventTypes, _ := d.store.GetDistinctEventTypes()
 	metrics := d.buildMetrics()
+	totalCount, _ := d.store.CountEvents(filters)
 
 	views := make([]eventView, len(events))
 	for i, e := range events {
@@ -137,19 +163,21 @@ func (d *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Reques
 	}
 
 	data := eventsPageData{
-		Metrics:     metrics,
-		Events:      views,
-		AppIDs:      appIDs,
-		EventTypes:  eventTypes,
-		ActiveAppID: filters.AppID,
-		ActiveEvent: filters.EventType,
-		ActiveFrom:  r.URL.Query().Get("from"),
-		ActiveTo:    r.URL.Query().Get("to"),
-		Page:        page,
-		PrevPage:    page - 1,
-		NextPage:    page + 1,
-		HasMore:     hasMore,
-		FilterQuery: d.filterQueryString(filters),
+		Metrics:      metrics,
+		Events:       views,
+		AppIDs:       appIDs,
+		EventTypes:   eventTypes,
+		ActiveAppID:  filters.AppID,
+		ActiveEvent:  filters.EventType,
+		ActiveFrom:   r.URL.Query().Get("from"),
+		ActiveTo:     r.URL.Query().Get("to"),
+		ActiveSearch: filters.Search,
+		Page:         page,
+		PrevPage:     page - 1,
+		NextPage:     page + 1,
+		HasMore:      hasMore,
+		TotalCount:   totalCount,
+		FilterQuery:  d.filterQueryString(filters),
 	}
 
 	d.render(w, "layout.html", data)
@@ -176,18 +204,22 @@ func (d *DashboardHandler) HandleEventsPartial(w http.ResponseWriter, r *http.Re
 		events = events[:eventsPerPage]
 	}
 
+	totalCount, _ := d.store.CountEvents(filters)
+
 	views := make([]eventView, len(events))
 	for i, e := range events {
 		views[i] = newEventView(e)
 	}
 
 	data := eventsPageData{
-		Events:      views,
-		Page:        page,
-		PrevPage:    page - 1,
-		NextPage:    page + 1,
-		HasMore:     hasMore,
-		FilterQuery: d.filterQueryString(filters),
+		Events:       views,
+		ActiveSearch: filters.Search,
+		Page:         page,
+		PrevPage:     page - 1,
+		NextPage:     page + 1,
+		HasMore:      hasMore,
+		TotalCount:   totalCount,
+		FilterQuery:  d.filterQueryString(filters),
 	}
 
 	d.renderPartial(w, "events_table", data)
@@ -305,6 +337,7 @@ func (d *DashboardHandler) parseFilters(r *http.Request) (EventFilters, int) {
 		EventType: q.Get("event"),
 		From:      from,
 		To:        to,
+		Search:    strings.TrimSpace(q.Get("search")),
 	}, page
 }
 
@@ -323,13 +356,34 @@ func (d *DashboardHandler) filterQueryString(f EventFilters) string {
 	if f.To != "" {
 		parts = append(parts, "&to="+url.QueryEscape(f.To))
 	}
+	if f.Search != "" {
+		parts = append(parts, "&search="+url.QueryEscape(f.Search))
+	}
 	return strings.Join(parts, "")
+}
+
+// getTemplate returns the dashboard template, re-parsing from disk in dev mode.
+func (d *DashboardHandler) getTemplate() *template.Template {
+	if devMode {
+		t, err := template.ParseFiles(
+			"templates/layout.html",
+			"templates/events.html",
+			"templates/event_row.html",
+			"templates/event_detail.html",
+		)
+		if err != nil {
+			log.Printf("dashboard: dev parse templates: %v", err)
+			return d.tmpl
+		}
+		return t
+	}
+	return d.tmpl
 }
 
 // render executes a full-page template.
 func (d *DashboardHandler) render(w http.ResponseWriter, name string, data interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := d.tmpl.ExecuteTemplate(w, name, data); err != nil {
+	if err := d.getTemplate().ExecuteTemplate(w, name, data); err != nil {
 		log.Printf("dashboard: render %s: %v", name, err)
 	}
 }
@@ -337,7 +391,7 @@ func (d *DashboardHandler) render(w http.ResponseWriter, name string, data inter
 // renderPartial executes a named template block (htmx partial).
 func (d *DashboardHandler) renderPartial(w http.ResponseWriter, name string, data interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := d.tmpl.ExecuteTemplate(w, name, data); err != nil {
+	if err := d.getTemplate().ExecuteTemplate(w, name, data); err != nil {
 		log.Printf("dashboard: render partial %s: %v", name, err)
 	}
 }

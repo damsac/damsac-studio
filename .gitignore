@@ -6,6 +6,8 @@
 # Go
 api/api
 api/studio-analytics
+api/tmp/
+api/.dev-password
 
 # macOS
 .DS_Store

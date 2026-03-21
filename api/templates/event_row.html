@@ -3,9 +3,10 @@
     <td class="ts">{{.FormattedTime}}</td>
     <td class="app">{{.AppID}}</td>
     <td class="evt"><span class="event-badge">{{.EventName}}</span></td>
-    <td class="props">{{.PropertiesPreview}}</td>
+    <td class="call-type">{{if .CallType}}<span class="call-type-badge">{{.CallType}}</span>{{end}}</td>
+    <td class="cost">{{.Cost}}</td>
 </tr>
 <tr>
-    <td colspan="4" class="event-detail"></td>
+    <td colspan="5" class="event-detail"></td>
 </tr>
 {{end}}

@@ -108,8 +108,8 @@ echo ""
 nix run github:nix-community/nixos-anywhere -- \
   --flake ".#damsac" \
   -i keys/deploy \
-  --ssh-option "-o StrictHostKeyChecking=no" \
-  --ssh-option "-o UserKnownHostsFile=/dev/null" \
+  --ssh-option "StrictHostKeyChecking=no" \
+  --ssh-option "UserKnownHostsFile=/dev/null" \
   "root@${SERVER_IP}"
 
 echo ""

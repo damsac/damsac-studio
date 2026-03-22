@@ -35,5 +35,8 @@ sdk/swift/.build/
 tmp/
 .claude/
 
+# Node
+node_modules/
+
 # Jujutsu (colocated with git)
 .jj/

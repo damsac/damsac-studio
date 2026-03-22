@@ -75,6 +75,26 @@
         "type": "github"
       }
     },
+    "holesail": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1774124555,
+        "narHash": "sha256-1mZBpwqqbVJInXm3kbUTGFJTxzXgiuntH4ouyaXb8OA=",
+        "owner": "gudnuf",
+        "repo": "holesail-nix",
+        "rev": "c5938c25d7f6fda76d0b447440a8540167aeef2e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gudnuf",
+        "repo": "holesail-nix",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -152,6 +172,7 @@
         "claude-code": "claude-code",
         "disko": "disko",
         "flake-utils": "flake-utils_2",
+        "holesail": "holesail",
         "home-manager": "home-manager",
         "mercury": "mercury",
         "nixpkgs": "nixpkgs_2"

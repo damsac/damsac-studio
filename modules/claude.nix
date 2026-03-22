@@ -58,6 +58,24 @@ let
     mercury log --channel CH --limit N                  # Show history
     ```
 
+    ## Discord Thread Tracking
+
+    If you are a keeper with a Discord channel, track active threads in a file at:
+    `~/.claude/channels/discord-<your-name>/threads.json`
+
+    Format:
+    ```json
+    {
+      "1485355965": { "label": "Isaac onboarding", "updated": "2026-03-22T19:32:00Z" },
+      "1485357630": { "label": "Thread/tmux architecture", "updated": "2026-03-22T19:56:00Z" }
+    }
+    ```
+
+    When a Discord message arrives:
+    - Check the `chat_id` — if it matches a known thread ID, you have context for that conversation
+    - If it's a new thread ID (different from the main channel), fetch the thread history (`fetch_messages` with the thread's chat_id), label it, and add it to `threads.json`
+    - This map persists across rekindles — always read it on session start
+
     ## Workspaces
 
     | Path | jj workspace | Purpose |

@@ -423,7 +423,7 @@ func (d *DashboardHandler) HandleEventsStream(w http.ResponseWriter, r *http.Req
 			var buf bytes.Buffer
 			for _, e := range events {
 				view := newEventViewFromEvent(e)
-				if err := d.tmpl.ExecuteTemplate(&buf, "event_row", view); err != nil {
+				if err := d.getTemplate().ExecuteTemplate(&buf, "event_row", view); err != nil {
 					log.Printf("sse: render event_row: %v", err)
 					continue
 				}
@@ -535,7 +535,10 @@ func (d *DashboardHandler) buildMetrics() DashboardMetrics {
 func formatTimestamp(ts string) string {
 	t, err := time.Parse(time.RFC3339, ts)
 	if err != nil {
-		return ts
+		t, err = time.Parse(time.RFC3339Nano, ts)
+		if err != nil {
+			return ts
+		}
 	}
 	return t.Format("Jan 02 15:04:05")
 }

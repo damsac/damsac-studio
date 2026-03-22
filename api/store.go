@@ -146,8 +146,6 @@ func (s *Store) InsertEvents(events []Event) (int64, error) {
 type EventFilters struct {
 	AppID     string
 	EventType string
-	From      string // RFC3339
-	To        string // RFC3339
 	DeviceID  string
 }
 
@@ -164,14 +162,6 @@ func (s *Store) QueryEvents(filters EventFilters, page, pageSize int) ([]StoredE
 	if filters.EventType != "" {
 		clauses = append(clauses, "event = ?")
 		args = append(args, filters.EventType)
-	}
-	if filters.From != "" {
-		clauses = append(clauses, "timestamp >= ?")
-		args = append(args, filters.From)
-	}
-	if filters.To != "" {
-		clauses = append(clauses, "timestamp <= ?")
-		args = append(args, filters.To)
 	}
 	if filters.DeviceID != "" {
 		clauses = append(clauses, "json_extract(context, '$.device_id') = ?")
@@ -217,14 +207,6 @@ func (s *Store) CountEvents(filters EventFilters) (int, error) {
 	if filters.EventType != "" {
 		clauses = append(clauses, "event = ?")
 		args = append(args, filters.EventType)
-	}
-	if filters.From != "" {
-		clauses = append(clauses, "timestamp >= ?")
-		args = append(args, filters.From)
-	}
-	if filters.To != "" {
-		clauses = append(clauses, "timestamp <= ?")
-		args = append(args, filters.To)
 	}
 	if filters.DeviceID != "" {
 		clauses = append(clauses, "json_extract(context, '$.device_id') = ?")

@@ -22,6 +22,7 @@ result
 
 # MCP config (contains API keys and server IPs)
 .mcp.json
+!plugins/**/.mcp.json
 
 # Deployment secrets
 infra/hetzner.env

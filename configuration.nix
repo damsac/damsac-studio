@@ -15,7 +15,7 @@
   # --- Caddy: reverse proxy with auto TLS ---
   services.caddy = {
     enable = true;
-    virtualHosts.":80" = {
+    virtualHosts."damsac.studio" = {
       extraConfig = ''
         reverse_proxy localhost:8080
       '';

@@ -247,6 +247,12 @@ let
     name = "mercury-plugin";
   };
 
+  # ── Metacraft skills ─────────────────────────────────────────────
+  metacraftSrc = builtins.path {
+    path = ../skills/metacraft;
+    name = "metacraft-skills";
+  };
+
   # ── User-level settings (per-user ~/.claude/settings.local.json) ──
   # Contains MCP server configs that need to be available globally,
   # regardless of which project directory Claude is launched from.
@@ -293,6 +299,13 @@ in
       install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/tsconfig.json /home/''${user}/.claude/plugins/mercury/tsconfig.json
       install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/.mcp.json /home/''${user}/.claude/plugins/mercury/.mcp.json
       install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/.claude-plugin/plugin.json /home/''${user}/.claude/plugins/mercury/.claude-plugin/plugin.json
+
+      # Metacraft skills
+      for skill in gather genesis lanes-plan lanes-status meta-agent session-lifecycle tmux-lanes; do
+        mkdir -p /home/''${user}/.claude/skills/metacraft/$skill
+        install -m 0644 -o ''${user} -g users ${metacraftSrc}/$skill/SKILL.md /home/''${user}/.claude/skills/metacraft/$skill/SKILL.md
+      done
+      install -m 0644 -o ''${user} -g users ${metacraftSrc}/PHILOSOPHY.md /home/''${user}/.claude/skills/metacraft/PHILOSOPHY.md
     done
   '';
 

@@ -10,6 +10,8 @@ let
     home.packages = with pkgs; [
       # AI tools
       claude-code
+      bun
+      mercury
 
       # Version control
       jujutsu

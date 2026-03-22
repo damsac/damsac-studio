@@ -15,9 +15,13 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    mercury = {
+      url = "github:gudnuf/mercury";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, disko, claude-code, home-manager }:
+  outputs = { self, nixpkgs, flake-utils, disko, claude-code, home-manager, mercury }:
     let
       lib = nixpkgs.lib;
 
@@ -80,7 +84,11 @@
           self.nixosModules.default
           {
             nixpkgs.hostPlatform = "x86_64-linux";
-            nixpkgs.overlays = [ overlay claude-code.overlays.default ];
+            nixpkgs.overlays = [
+              overlay
+              claude-code.overlays.default
+              (final: prev: { mercury = mercury.packages.${final.system}.default; })
+            ];
             nixpkgs.config.allowUnfreePredicate = pkg:
               builtins.elem (nixpkgs.lib.getName pkg) [ "claude-code" ];
             services.damsac-studio = {
@@ -105,7 +113,11 @@
           self.nixosModules.dev
           {
             nixpkgs.hostPlatform = "x86_64-linux";
-            nixpkgs.overlays = [ overlay claude-code.overlays.default ];
+            nixpkgs.overlays = [
+              overlay
+              claude-code.overlays.default
+              (final: prev: { mercury = mercury.packages.${final.system}.default; })
+            ];
             nixpkgs.config.allowUnfreePredicate = pkg:
               builtins.elem (nixpkgs.lib.getName pkg) [ "claude-code" ];
             services.damsac-studio.enable = lib.mkForce false;

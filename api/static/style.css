@@ -150,7 +150,10 @@ main {
 }
 @media (max-width: 500px) {
     .metrics-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
+    }
+    .metric-card-wide {
+        grid-column: 1 / -1;
     }
 }
 .metric-card {
@@ -771,13 +774,14 @@ td.user {
         max-height: 200px;
     }
 
-    /* Heatmap: shrink cells */
-    .hm-cell { width: 11px; height: 11px; border-radius: 2px; }
-    .hm-row { gap: 4px; }
-    .hm-cells { gap: 1px; }
-    .hm-day { width: 24px; font-size: 9px; }
-    .hm-hour-row { gap: 4px; }
-    .hm-hour-labels { grid-template-columns: repeat(24, 11px); gap: 1px; }
+    /* Heatmap: fill width */
+    .hm-cells { display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; flex: 1; }
+    .hm-cell { width: auto; height: auto; aspect-ratio: 1; border-radius: 2px; }
+    .hm-row { gap: 3px; }
+    .hm-day { width: 22px; font-size: 9px; }
+    .hm-hour-row { gap: 3px; display: none; }
+    .hm-hour-row-bottom { display: flex; margin-top: 2px; }
+    .hm-hour-labels { display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; flex: 1; }
     .hm-hour { font-size: 8px; }
 
     /* Pagination */
@@ -810,15 +814,11 @@ td.user {
     .metric-label { font-size: 10px; }
     .metric-value { font-size: 22px; }
 
-    /* Heatmap: hide day labels, smaller cells */
-    .hm-day { display: none; }
-    .hm-cell { width: 9px; height: 9px; }
-    .hm-cells { gap: 1px; }
+    /* Heatmap: keep full width, tighter gaps */
+    .hm-day { width: 20px; font-size: 8px; }
     .hm-row { gap: 2px; }
     .heatmap { gap: 2px; }
-    .hm-hour-row { gap: 2px; }
-    .hm-hour-labels { grid-template-columns: repeat(24, 9px); gap: 1px; }
-    .hm-hour { font-size: 8px; }
+    .hm-hour { font-size: 7px; }
 
     /* Filter bar */
     .filter-bar { padding: 8px 10px; }
@@ -871,9 +871,10 @@ td.user {
     .metric-label { font-size: 9px; }
     .metric-value { font-size: 20px; }
 
-    /* Heatmap: even smaller, hide hour labels */
-    .hm-cell { width: 7px; height: 7px; border-radius: 1px; }
-    .hm-hour-row { display: none; }
+    /* Heatmap: tighter, keep labels */
+    .hm-day { width: 16px; font-size: 7px; }
+    .hm-cell { border-radius: 1px; }
+    .hm-hour { font-size: 6px; }
 
     /* Card rows */
     table tbody tr.event-row { padding: 8px; margin-bottom: 4px; border-radius: 6px; }

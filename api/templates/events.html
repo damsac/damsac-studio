@@ -12,15 +12,6 @@
         <div class="metric-card metric-card-wide">
             <span class="metric-label">token usage</span>
             <div class="heatmap">
-                <div class="hm-hour-row">
-                    <span class="hm-day"></span>
-                    <div class="hm-cells hm-hour-labels">
-                        <span class="hm-hour" style="grid-column:1">12a</span>
-                        <span class="hm-hour" style="grid-column:7">6a</span>
-                        <span class="hm-hour" style="grid-column:13">12p</span>
-                        <span class="hm-hour" style="grid-column:19">6p</span>
-                    </div>
-                </div>
                 {{range .Metrics.Heatmap}}
                 <div class="hm-row">
                     <span class="hm-day">{{.Day}}</span>
@@ -31,6 +22,15 @@
                     </div>
                 </div>
                 {{end}}
+                <div class="hm-hour-row hm-hour-row-bottom">
+                    <span class="hm-day"></span>
+                    <div class="hm-cells hm-hour-labels">
+                        <span class="hm-hour" style="grid-column:1">12a</span>
+                        <span class="hm-hour" style="grid-column:7">6a</span>
+                        <span class="hm-hour" style="grid-column:13">12p</span>
+                        <span class="hm-hour" style="grid-column:19">6p</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

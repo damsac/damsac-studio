@@ -1,14 +1,14 @@
 {{define "event_row"}}
 <tr class="event-row {{if .GroupPos}}grouped grouped-{{.GroupPos}}{{end}}" hx-get="/dashboard/events/{{.ID}}" hx-target="next .event-detail" hx-swap="innerHTML">
-    <td class="col-ts ts" data-ts="{{.Timestamp}}"></td>
-    <td class="col-app app">{{.AppID}}</td>
-    <td class="col-event evt"><span class="event-badge">{{.EventName}}</span></td>
-    <td class="col-call-type call-type">{{if .CallType}}<span class="call-type-badge">{{.CallType}}</span>{{end}}</td>
-    <td class="col-model model">{{.Model}}</td>
-    <td class="col-tokens-in tokens">{{.TokensIn}}</td>
-    <td class="col-tokens-out tokens">{{.TokensOut}}</td>
-    <td class="col-cost cost">{{.Cost}}</td>
-    <td class="col-user user" onclick="event.stopPropagation()">{{if .DeviceID}}<a class="user-link" hx-get="/dashboard/events?device_id={{.DeviceID}}" hx-target="#events-table" title="{{.DeviceID}}">{{.DeviceIDShort}}</a>{{end}}</td>
+    <td class="col-ts ts" data-label="Time" data-ts="{{.Timestamp}}"></td>
+    <td class="col-app app" data-label="App">{{.AppID}}</td>
+    <td class="col-event evt" data-label="Event"><span class="event-badge">{{.EventName}}</span></td>
+    <td class="col-call-type call-type" data-label="Call Type">{{if .CallType}}<span class="call-type-badge">{{.CallType}}</span>{{end}}</td>
+    <td class="col-model model" data-label="Model">{{.Model}}</td>
+    <td class="col-tokens-in tokens" data-label="Tokens In">{{.TokensIn}}</td>
+    <td class="col-tokens-out tokens" data-label="Tokens Out">{{.TokensOut}}</td>
+    <td class="col-cost cost" data-label="Cost">{{.Cost}}</td>
+    <td class="col-user user" data-label="User" onclick="event.stopPropagation()">{{if .DeviceID}}<a class="user-link" hx-get="/dashboard/events?device_id={{.DeviceID}}" hx-target="#events-table" title="{{.DeviceID}}">{{.DeviceIDShort}}</a>{{end}}</td>
 </tr>
 <tr class="{{if .GroupPos}}grouped-detail grouped-{{.GroupPos}}{{end}}">
     <td colspan="9" class="event-detail"></td>

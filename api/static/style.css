@@ -205,6 +205,22 @@ main {
     outline: 2px solid var(--text);
     outline-offset: -1px;
 }
+.hm-hour-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    margin-bottom: 1px;
+}
+.hm-hour-labels {
+    display: grid;
+    grid-template-columns: repeat(24, 14px);
+    gap: 2px;
+}
+.hm-hour {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
 
 /* --- Filter Bar --- */
 .filter-bar {
@@ -603,4 +619,294 @@ td.user {
 }
 .item-list a:hover {
     color: var(--accent);
+}
+
+/* ============================================
+   Mobile Responsive Breakpoints
+   ============================================ */
+
+/* --- Tablet / small desktop (below 768px) --- */
+@media (max-width: 768px) {
+    /* Nav: tighten spacing */
+    nav { padding: 0 16px; height: 48px; }
+    .nav-title { font-size: 14px; }
+    .nav-links { gap: 12px; }
+    .nav-link { font-size: 12px; }
+
+    /* Main: reduce padding */
+    main { padding: 16px; }
+
+    /* Metrics: tighter padding */
+    .metrics-row { gap: 12px; margin-bottom: 16px; }
+    .metric-card { padding: 16px; gap: 6px; }
+    .metric-value { font-size: 26px; }
+
+    /* Filter bar: tighter */
+    .filter-bar { padding: 10px 12px; margin-bottom: 12px; }
+    .filter-controls { gap: 6px; }
+    .filter-controls select,
+    .filter-controls input[type="datetime-local"] {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
+    /* Responsive table: stack rows as cards */
+    .table-wrap { overflow-x: visible; }
+
+    table thead { display: none; }
+
+    table tbody tr.event-row {
+        display: block;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: var(--bg-raised);
+    }
+
+    table tbody tr.event-row:hover td {
+        background: transparent;
+    }
+
+    /* Grouped row styling adjustments for card mode */
+    table tbody tr.event-row.grouped {
+        border-left: 3px solid var(--accent);
+    }
+    table tbody tr.event-row.grouped td {
+        border-left: none;
+    }
+    table tbody tr.event-row.grouped-first {
+        margin-bottom: 2px;
+        border-radius: 8px 8px 4px 4px;
+    }
+    table tbody tr.event-row.grouped-mid {
+        margin-bottom: 2px;
+        border-radius: 4px;
+    }
+    table tbody tr.event-row.grouped-last {
+        border-radius: 4px 4px 8px 8px;
+    }
+
+    table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 3px 0;
+        border: none;
+        border-bottom: none;
+    }
+
+    table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-right: 12px;
+        flex-shrink: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    /* Override white-space on mobile for card cells */
+    td.ts, td.app, td.evt, td.call-type, td.model, td.cost, td.tokens, td.user {
+        white-space: normal;
+    }
+
+    /* Hide empty optional cells on mobile (no call-type, no cost, etc.)
+       Use specific classes to avoid hiding ts (filled by JS) or event-detail */
+    table tbody td.call-type:empty,
+    table tbody td.cost:empty,
+    table tbody td.model:empty,
+    table tbody td.tokens:empty,
+    table tbody td.user:empty {
+        display: none;
+    }
+
+    /* Column visibility on mobile: hidden cols stay hidden */
+    .col-model,
+    .col-tokens-in,
+    .col-tokens-out {
+        display: none;
+    }
+    .llm-view .col-model,
+    .llm-view .col-tokens-in,
+    .llm-view .col-tokens-out {
+        display: flex;
+    }
+    .filtered-app .col-app { display: none; }
+    .filtered-event .col-event { display: none; }
+    .filtered-user .col-user { display: none; }
+
+    /* Event detail row: full-width in card mode */
+    table tbody tr:not(.event-row) {
+        display: block;
+    }
+    table tbody tr:not(.event-row) td.event-detail {
+        display: block;
+        padding: 0 !important;
+    }
+    table tbody tr:not(.event-row) td.event-detail:empty {
+        display: block;
+        padding: 0 !important;
+        margin: 0;
+    }
+
+    /* Detail panel: tighter on mobile */
+    .detail-panel {
+        margin: 4px 0 8px;
+        padding: 12px 14px;
+    }
+    .detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+    .detail-id, .detail-time { font-size: 11px; }
+    .detail-grid { gap: 14px; }
+    .json-block {
+        padding: 8px;
+        font-size: 11px;
+        max-height: 200px;
+    }
+
+    /* Heatmap: shrink cells */
+    .hm-cell { width: 11px; height: 11px; border-radius: 2px; }
+    .hm-row { gap: 4px; }
+    .hm-cells { gap: 1px; }
+    .hm-day { width: 24px; font-size: 9px; }
+    .hm-hour-row { gap: 4px; }
+    .hm-hour-labels { grid-template-columns: repeat(24, 11px); gap: 1px; }
+    .hm-hour { font-size: 8px; }
+
+    /* Pagination */
+    .pagination { gap: 12px; padding: 12px 0; }
+    .page-link, .page-info { font-size: 12px; }
+
+    /* Table header */
+    .table-header { flex-wrap: wrap; gap: 4px; padding: 0 0 8px; }
+
+    /* Projects: tighter */
+    .status-row { gap: 10px; }
+    .status-card { padding: 14px; }
+    .status-count { font-size: 26px; }
+}
+
+/* --- Small phones (below 600px) --- */
+@media (max-width: 600px) {
+    /* Nav: even tighter */
+    nav { padding: 0 12px; height: 44px; }
+    .nav-title { font-size: 13px; }
+    .nav-links { gap: 8px; }
+    .nav-link { font-size: 11px; }
+
+    /* Main */
+    main { padding: 12px; }
+
+    /* Metrics */
+    .metrics-row { gap: 8px; margin-bottom: 12px; }
+    .metric-card { padding: 12px; gap: 4px; }
+    .metric-label { font-size: 10px; }
+    .metric-value { font-size: 22px; }
+
+    /* Heatmap: hide day labels, smaller cells */
+    .hm-day { display: none; }
+    .hm-cell { width: 9px; height: 9px; }
+    .hm-cells { gap: 1px; }
+    .hm-row { gap: 2px; }
+    .heatmap { gap: 2px; }
+    .hm-hour-row { gap: 2px; }
+    .hm-hour-labels { grid-template-columns: repeat(24, 9px); gap: 1px; }
+    .hm-hour { font-size: 8px; }
+
+    /* Filter bar */
+    .filter-bar { padding: 8px 10px; }
+    .filter-controls select,
+    .filter-controls input[type="datetime-local"] {
+        padding: 4px 6px;
+        font-size: 11px;
+        max-width: 130px;
+    }
+
+    /* Card rows: tighter */
+    table tbody tr.event-row { padding: 10px; margin-bottom: 6px; }
+    table tbody td { font-size: 12px; }
+    table tbody td::before { font-size: 10px; }
+
+    /* Event badges smaller */
+    .event-badge, .call-type-badge { font-size: 11px; padding: 1px 6px; }
+
+    /* Active badges */
+    .active-badge { font-size: 10px; padding: 1px 6px; }
+
+    /* Detail panel */
+    .detail-panel { padding: 10px 12px; }
+    .detail-section h4 { font-size: 10px; }
+    .detail-section dt { font-size: 11px; }
+    .detail-section dd { font-size: 12px; }
+
+    /* Projects */
+    .status-card { padding: 12px; }
+    .status-count { font-size: 22px; }
+    .status-label { font-size: 10px; }
+    .project-title { font-size: 17px; margin-bottom: 14px; }
+    .item-list li { padding: 8px 12px; font-size: 13px; }
+}
+
+/* --- Very small phones (below 400px) --- */
+@media (max-width: 400px) {
+    /* Nav */
+    nav { padding: 0 8px; }
+    .nav-title { font-size: 12px; }
+    .nav-links { gap: 6px; }
+    .nav-link { font-size: 10px; }
+
+    /* Main: minimal padding */
+    main { padding: 8px; }
+
+    /* Metrics */
+    .metrics-row { gap: 6px; margin-bottom: 8px; }
+    .metric-card { padding: 10px; }
+    .metric-label { font-size: 9px; }
+    .metric-value { font-size: 20px; }
+
+    /* Heatmap: even smaller, hide hour labels */
+    .hm-cell { width: 7px; height: 7px; border-radius: 1px; }
+    .hm-hour-row { display: none; }
+
+    /* Card rows */
+    table tbody tr.event-row { padding: 8px; margin-bottom: 4px; border-radius: 6px; }
+    table tbody td { padding: 2px 0; font-size: 11px; }
+    table tbody td::before { font-size: 9px; }
+
+    /* Badges */
+    .event-badge, .call-type-badge { font-size: 10px; padding: 1px 4px; }
+    .active-badge { font-size: 9px; padding: 1px 4px; }
+
+    /* Filter */
+    .filter-bar { padding: 6px 8px; margin-bottom: 8px; }
+    .filter-controls select,
+    .filter-controls input[type="datetime-local"] {
+        font-size: 10px;
+        padding: 3px 5px;
+    }
+    .filter-clear { font-size: 11px; padding: 4px 6px; }
+
+    /* Detail */
+    .detail-panel { margin: 2px 0 6px; padding: 8px 10px; }
+    .json-block { padding: 6px; font-size: 10px; max-height: 150px; }
+
+    /* Pagination */
+    .pagination { gap: 8px; padding: 8px 0; }
+    .page-link, .page-info { font-size: 11px; }
+
+    /* Projects */
+    .status-row { gap: 6px; }
+    .status-card { padding: 10px; }
+    .status-count { font-size: 20px; }
+    .project-title { font-size: 16px; }
+    .item-section { margin-bottom: 20px; }
+    .item-section h2 { font-size: 12px; margin-bottom: 8px; }
+    .item-list li { padding: 6px 8px; font-size: 12px; }
 }

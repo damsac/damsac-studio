@@ -193,6 +193,8 @@ When a studio-sourced entry is updated in Murmur (completed, notes added, priori
 
 ## Cron: Daily Curation
 
+> **Superseded:** See `studio-alchemist-design.md`. The curation role is now handled by a persistent alchemist session with Discord as its human interface, not a cron job.
+
 A Claude Code session runs on cron (e.g. daily at 8am, or multiple times per day):
 
 1. Reads `$DATA_DIR/memory.md` for persistent context

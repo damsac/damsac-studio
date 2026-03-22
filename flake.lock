@@ -95,6 +95,26 @@
         "type": "github"
       }
     },
+    "mercury": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1772609233,
+        "narHash": "sha256-AVXOMIx/0AsZj5dKpddsG5AT6PXYdFoCXKvtLg/2fnM=",
+        "owner": "gudnuf",
+        "repo": "mercury",
+        "rev": "9e95bac97c59f6ec3efc890da24729b0cc0ece55",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gudnuf",
+        "repo": "mercury",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1773628058,
@@ -133,6 +153,7 @@
         "disko": "disko",
         "flake-utils": "flake-utils_2",
         "home-manager": "home-manager",
+        "mercury": "mercury",
         "nixpkgs": "nixpkgs_2"
       }
     },

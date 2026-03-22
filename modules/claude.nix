@@ -1,6 +1,115 @@
 { pkgs, lib, ... }:
 
 let
+  # ── Workspace-level CLAUDE.md ─────────────────────────────────────
+  # Read by every Claude session started under /srv/damsac/.
+  # Contains Mercury instructions and workspace conventions.
+  workspaceClaudeMd = pkgs.writeText "workspace-CLAUDE.md" ''
+    # damsac VPS
+
+    Shared NixOS dev server (Hetzner). Two developers: gudnuf, isaac. Version control via jj (Jujutsu) colocated with git.
+
+    ## Mercury
+
+    Inter-agent message bus. Binary on PATH (`mercury`). Use it for all inter-session communication.
+
+    ### On session start
+
+    Determine your role and subscribe:
+
+    ```bash
+    # 1. Choose your identity based on your role:
+    #    alchemist              — meta-agent (strategic, never writes code)
+    #    keeper:<project>       — project keeper (e.g. keeper:studio, keeper:murmur)
+    #    worker:<task>           — scoped implementation worker (e.g. worker:auth, worker:sse-fix)
+
+    # 2. Subscribe to your channels:
+    mercury subscribe --as <identity> --channel status
+    mercury subscribe --as <identity> --channel <your-channel>
+
+    # 3. Announce yourself:
+    mercury send --as <identity> --to status "online, <brief description of what you're doing>"
+    ```
+
+    ### Channel conventions
+
+    | Channel | Purpose | Who subscribes |
+    |---------|---------|----------------|
+    | `status` | Broadcast — everyone posts session start/end, major milestones | All agents |
+    | `studio` | Strategic coordination — alchemist reads, keepers report | alchemist, all keepers |
+    | `keeper:<project>` | Project-specific updates and delegation | keeper for that project, alchemist |
+    | `workers` | Implementation tasks dispatched by alchemist/keepers | Workers, alchemist |
+
+    ### During your session
+
+    - Post status updates on significant progress: `mercury send --as <identity> --to status "completed X, starting Y"`
+    - Check for messages periodically: `mercury read --as <identity>`
+    - When done or ending session: `mercury send --as <identity> --to status "signing off, completed: <summary>"`
+
+    ### Commands reference
+
+    ```bash
+    mercury send --as NAME --to CHANNEL "message"     # Send
+    mercury read --as NAME                              # Read unread (all subscribed channels)
+    mercury read --as NAME --channel CH                 # Read unread (specific channel)
+    mercury subscribe --as NAME --channel CH            # Subscribe
+    mercury unsubscribe --as NAME --channel CH          # Unsubscribe
+    mercury channels                                    # List channels with messages
+    mercury log --channel CH --limit N                  # Show history
+    ```
+
+    ## Workspaces
+
+    | Path | jj workspace | Purpose |
+    |------|-------------|---------|
+    | `/srv/damsac/gudnuf` | `gudnuf` | gudnuf's dev workspace |
+    | `/srv/damsac/isaac` | `isaac` | isaac's dev workspace |
+    | `/srv/damsac/damsac-studio` | `default` | Deploy workspace — `nrs`/`nrsd` build from here |
+
+    Each workspace has its own working copy. Edits in one do NOT affect others. All share the same repo history.
+
+    ## jj workflow
+
+    - **Work in your user's workspace** (`/srv/damsac/$USER`), never in `damsac-studio` directly
+    - **One change per logical unit** — `jj new main -m "description"` before starting something new
+    - **Describe early** — `jj describe -m "what and why"`
+    - **`jj new` when done** — start fresh for the next thing
+    - **Split if needed** — `jj split <files>` if multiple concerns land in one change
+    - **Push to GitHub** — `jj git push`
+
+    ## Key commands
+
+    ```
+    jj log                         # Commit graph (default command)
+    jj status                      # Working copy changes
+    jj new main -m "description"   # New change off main
+    jj describe -m "msg"           # Describe current change
+    jj edit <change-id>            # Switch to existing change
+    jj diff                        # Diff of current change
+    jj split                       # Split change into two
+    jj git push                    # Push to GitHub
+    jj undo                        # Undo last operation
+    ```
+
+    ## Collaboration rules
+
+    - **Do NOT edit another workspace's working-copy change** — each workspace owns its `@`
+    - **Do NOT commit in the deploy workspace** — it's for builds only
+    - Use `jj log` to see what the other developer is working on before starting related work
+
+    ## Shell aliases
+
+    ```
+    nrs   # Rebuild prod (always from deploy workspace)
+    nrsd  # Rebuild dev mode (always from deploy workspace)
+    nrt   # Test rebuild
+    cdw   # cd to your workspace
+    cdd   # cd to deploy workspace
+    dw    # Watch teammate's tmux session
+    dp    # Join shared pair session
+    ```
+  '';
+
   # ── Project CLAUDE.md ──────────────────────────────────────────────
   claudeMd = pkgs.writeText "CLAUDE.md" ''
     # damsac-studio
@@ -115,7 +224,38 @@ let
         "Bash(curl:*)"
         "Bash(systemctl status:*)"
         "Bash(gh repo:*)"
+        "Bash(mercury:*)"
+        "Bash(jj:*)"
       ];
+    };
+    enabledPlugins = {
+      "discord@claude-plugins-official" = true;
+    };
+    mcpServers = {
+      mercury = {
+        command = "/bin/sh";
+        args = ["-c" "cd ~/.claude/plugins/mercury && bun run --silent start"];
+      };
+    };
+  });
+
+  # ── Mercury channel plugin ────────────────────────────────────────
+  # Copy plugin source into the Nix store at build time so activation
+  # doesn't depend on any specific workspace having the files.
+  mercuryPluginSrc = builtins.path {
+    path = ../plugins/mercury;
+    name = "mercury-plugin";
+  };
+
+  # ── User-level settings (per-user ~/.claude/settings.local.json) ──
+  # Contains MCP server configs that need to be available globally,
+  # regardless of which project directory Claude is launched from.
+  userSettings = pkgs.writeText "user-settings.local.json" (builtins.toJSON {
+    mcpServers = {
+      mercury = {
+        command = "/bin/sh";
+        args = ["-c" "cd ~/.claude/plugins/mercury && bun run --silent start"];
+      };
     };
   });
 
@@ -130,15 +270,30 @@ in
     "d ${projectDir}/.claude 2775 root damsac - -"
     "d ${projectDir}/.claude/commands 2775 root damsac - -"
     "d ${workspaceDir}/.claude 2775 root damsac - -"
+    "d /home/gudnuf/.claude/plugins/mercury 0755 gudnuf users - -"
+    "d /home/gudnuf/.claude/plugins/mercury/.claude-plugin 0755 gudnuf users - -"
+    "d /home/isaac/.claude/plugins/mercury 0755 isaac users - -"
+    "d /home/isaac/.claude/plugins/mercury/.claude-plugin 0755 isaac users - -"
   ];
 
   # Write project and workspace files on every activation.
   # These are copies (not symlinks) so they're mutable between rebuilds.
   # nrs/nrsd resets them to the state declared above.
   system.activationScripts.claude-config = lib.stringAfter [ "etc" ] ''
+    install -m 0664 -o root -g damsac ${workspaceClaudeMd} ${workspaceDir}/.claude/CLAUDE.md
     install -m 0664 -o root -g damsac ${claudeMd} ${projectDir}/CLAUDE.md
     install -m 0664 -o root -g damsac ${shipCommand} ${projectDir}/.claude/commands/ship.md
     install -m 0664 -o root -g damsac ${workspaceSettings} ${workspaceDir}/.claude/settings.local.json
+
+    # Mercury MCP server registration + channel plugin files
+    for user in gudnuf isaac; do
+      mkdir -p /home/''${user}/.claude/plugins/mercury/.claude-plugin
+      install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/server.ts /home/''${user}/.claude/plugins/mercury/server.ts
+      install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/package.json /home/''${user}/.claude/plugins/mercury/package.json
+      install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/tsconfig.json /home/''${user}/.claude/plugins/mercury/tsconfig.json
+      install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/.mcp.json /home/''${user}/.claude/plugins/mercury/.mcp.json
+      install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/.claude-plugin/plugin.json /home/''${user}/.claude/plugins/mercury/.claude-plugin/plugin.json
+    done
   '';
 
 }

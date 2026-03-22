@@ -19,7 +19,7 @@ let
 
     ```bash
     # 1. Choose your identity based on your role:
-    #    alchemist              — meta-agent (strategic, never writes code)
+    #    oracle                 — meta-agent (strategic, never writes code)
     #    keeper:<project>       — project keeper (e.g. keeper:studio, keeper:murmur)
     #    worker:<task>           — scoped implementation worker (e.g. worker:auth, worker:sse-fix)
 
@@ -36,9 +36,9 @@ let
     | Channel | Purpose | Who subscribes |
     |---------|---------|----------------|
     | `status` | Broadcast — everyone posts session start/end, major milestones | All agents |
-    | `studio` | Strategic coordination — alchemist reads, keepers report | alchemist, all keepers |
-    | `keeper:<project>` | Project-specific updates and delegation | keeper for that project, alchemist |
-    | `workers` | Implementation tasks dispatched by alchemist/keepers | Workers, alchemist |
+    | `studio` | Strategic coordination — oracle reads, keepers report | oracle, all keepers |
+    | `keeper:<project>` | Project-specific updates and delegation | keeper for that project, oracle |
+    | `workers` | Implementation tasks dispatched by oracle/keepers | Workers, oracle |
 
     ### During your session
 

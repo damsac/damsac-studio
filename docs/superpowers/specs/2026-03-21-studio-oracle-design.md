@@ -1,14 +1,14 @@
-# Studio Alchemist: The damsac-studio Meta-Agent
+# Studio Oracle: The damsac-studio Meta-Agent
 
 ## Overview
 
-The studio alchemist is a persistent Claude Code session running on the VPS that serves as the top-level meta-agent for all damsac work. It holds strategic context across projects (studio, Murmur, SDK), delegates implementation to workers, and curates the team's shared understanding of what matters.
+The studio oracle is a persistent Claude Code session running on the VPS that serves as the top-level meta-agent for all damsac work. It holds strategic context across projects (studio, Murmur, SDK), delegates implementation to workers, and curates the team's shared understanding of what matters.
 
 **Discord is its human interface.** Tmux + Mercury is its agent interface. The studio CLI + SQLite is its structured state. Memory.md is its persistent brain.
 
-This spec replaces the "Cron: Daily Curation" section of the studio agent design. Instead of a batch job that runs on a timer, the alchemist is always-on — listening to Discord, reading Mercury, and curating continuously.
+This spec replaces the "Cron: Daily Curation" section of the studio agent design. Instead of a batch job that runs on a timer, the oracle is always-on — listening to Discord, reading Mercury, and curating continuously.
 
-**Core principle from metacraft:** Separate strategic context from execution. The alchemist never touches code. It reads the landscape, names what matters, and delegates downward.
+**Core principle from metacraft:** Separate strategic context from execution. The oracle never touches code. It reads the landscape, names what matters, and delegates downward.
 
 ## Architecture
 
@@ -22,8 +22,8 @@ This spec replaces the "Cron: Daily Curation" section of the studio agent design
 │                                                             │
 │  tmux: pane 0 ─────────────────────────────────────────     │
 │  ┌───────────────────────────────────────────────────┐      │
-│  │  ALCHEMIST (claude --channels discord)             │      │
-│  │  identity: alchemist                                │      │
+│  │  ORACLE (claude --channels discord)                │      │
+│  │  identity: oracle                                  │      │
 │  │  reads: Mercury, VCS log, studio CLI, memory.md    │      │
 │  │  writes: memory.md, dashboard.json, studio items   │      │
 │  │  delegates: drafts prompts → workers via Mercury   │      │
@@ -51,7 +51,7 @@ Each layer does one thing. No layer tries to do another layer's job.
 | Layer | What it does | Persistence |
 |-------|-------------|-------------|
 | **Discord** | Human conversation — brainstorming, questions, decisions | Discord history (external) |
-| **Alchemist session** | Strategic context, delegation, curation | memory.md, dashboard.json, studio DB |
+| **Oracle session** | Strategic context, delegation, curation | memory.md, dashboard.json, studio DB |
 | **Mercury** | Agent-to-agent communication | mercury.db (SQLite, `~/.local/share/mercury/`) |
 | **Studio CLI/DB** | Structured project state — items, activity log | studio.db (SQLite, `$DATA_DIR/`) |
 | **VCS (jj/git)** | Code truth — what actually shipped | `/srv/damsac/` workspaces |
@@ -61,7 +61,7 @@ Each layer does one thing. No layer tries to do another layer's job.
 
 ## Identity & Role
 
-The alchemist follows the metacraft philosophy:
+The oracle follows the metacraft philosophy:
 
 **Does:**
 - Hold strategic context across all damsac projects
@@ -78,13 +78,13 @@ The alchemist follows the metacraft philosophy:
 - Descend into implementation detail — the moment it starts touching source files, it has abandoned the post
 - Hold stale context — if memory.md hasn't been updated, that's the first priority
 
-**Mercury identity:** `alchemist` (plain — there's one alchemist for the damsac practice, matching the Mercury naming convention)
+**Mercury identity:** `oracle` (plain — there's one oracle for the damsac practice, matching the Mercury naming convention)
 
 On session start:
 ```bash
-mercury subscribe --as alchemist --channel status
-mercury subscribe --as alchemist --channel studio
-mercury send --as alchemist --to status "alchemist online, reading state"
+mercury subscribe --as oracle --channel status
+mercury subscribe --as oracle --channel studio
+mercury send --as oracle --to status "oracle online, reading state"
 ```
 
 ## Discord Integration
@@ -112,17 +112,17 @@ Bot token stored on disk and read by the plugin at startup. Exact path TBD — n
 
 ### What Discord is good for (and not)
 
-**Use Discord for:** brainstorming, quick questions, status checks, asking the alchemist to do something ("create an item for that"), sharing context ("here's what we decided in the meeting")
+**Use Discord for:** brainstorming, quick questions, status checks, asking the oracle to do something ("create an item for that"), sharing context ("here's what we decided in the meeting")
 
 **Don't use Discord for:** structured project state (that's studio items), code discussion (that's jj/PR comments), detailed implementation plans (that's docs/specs)
 
-When a Discord conversation produces a decision or action item, the alchemist captures it in the appropriate system — creates a studio item, updates memory.md, or drafts a spec.
+When a Discord conversation produces a decision or action item, the oracle captures it in the appropriate system — creates a studio item, updates memory.md, or drafts a spec.
 
 ## Session Lifecycle
 
 ### Startup
 
-The alchemist runs in tmux pane 0 of the shared session:
+The oracle runs in tmux pane 0 of the shared session:
 
 ```bash
 claude --channels plugin:discord@claude-plugins-official
@@ -130,16 +130,16 @@ claude --channels plugin:discord@claude-plugins-official
 
 On start, it reads (in order):
 1. `memory.md` — persistent strategic context (same file referenced in the studio agent spec, at `$DATA_DIR/memory.md`)
-2. `mercury read --as alchemist` — what happened while it was away
+2. `mercury read --as oracle` — what happened while it was away
 3. `studio list` — current items
 4. VCS log (`jj log` or `git log`, last ~20 commits) — recent code changes
 
-Then posts to Mercury: `alchemist online, current state: <brief summary>`
+Then posts to Mercury: `oracle online, current state: <brief summary>`
 
 ### During
 
 - Responds to Discord @mentions (this is the primary trigger for all activity)
-- Reads Mercury when prompted or as part of handling a Discord request (no background polling — Claude Code sessions don't have a built-in loop, so Mercury reads happen when the alchemist is already active)
+- Reads Mercury when prompted or as part of handling a Discord request (no background polling — Claude Code sessions don't have a built-in loop, so Mercury reads happen when the oracle is already active)
 - Curates dashboard when asked ("@studio update the dashboard") or as a natural part of answering a status question
 - Updates memory.md when it learns something important
 
@@ -147,16 +147,16 @@ Then posts to Mercury: `alchemist online, current state: <brief summary>`
 
 When the context window gets heavy, use the rekindle pattern:
 1. Gather: write everything important to memory.md
-2. Post to Mercury: `alchemist rekindling, state persisted`
+2. Post to Mercury: `oracle rekindling, state persisted`
 3. End session
 4. Start fresh session in same pane
 5. Re-orient from memory.md, Mercury
 
-This is manual for now. The alchemist can recognize when it needs to rekindle ("my context is getting long, I should gather and restart").
+This is manual for now. The oracle can recognize when it needs to rekindle ("my context is getting long, I should gather and restart").
 
 ## Worker Delegation
 
-When something needs to be built, the alchemist:
+When something needs to be built, the oracle:
 
 1. Creates a studio item: `studio add "implement items table in store.go" --project studio --priority 2`
 2. Drafts a scoped prompt with:
@@ -164,16 +164,16 @@ When something needs to be built, the alchemist:
    - Acceptance criteria (what "done" looks like)
    - Files to read first
    - Constraints (follow CLAUDE.md conventions, don't change unrelated code)
-3. Dispatches via Mercury: `mercury send --as alchemist --to workers "<prompt>"`
+3. Dispatches via Mercury: `mercury send --as oracle --to workers "<prompt>"`
 4. Or via relay to a specific tmux pane if a worker is already running
 
-Workers report back via Mercury when done. The alchemist verifies (reads the diff, checks VCS log) and updates the item.
+Workers report back via Mercury when done. The oracle verifies (reads the diff, checks VCS log) and updates the item.
 
-**Worker spawning in v1 is manual.** The alchemist says what needs to happen (via Discord or Mercury), and a human starts a Claude Code session in a new tmux pane. Automated spawning is a future enhancement.
+**Worker spawning in v1 is manual.** The oracle says what needs to happen (via Discord or Mercury), and a human starts a Claude Code session in a new tmux pane. Automated spawning is a future enhancement.
 
 ## Curation
 
-The alchemist replaces the cron-based curator from the original studio agent spec. Instead of running on a timer, it curates when asked:
+The oracle replaces the cron-based curator from the original studio agent spec. Instead of running on a timer, it curates when asked:
 
 - A human asks ("@studio update the dashboard", "@studio what's the status")
 - As a natural side effect of answering a question that requires reading current state
@@ -187,12 +187,12 @@ Curation means:
 
 ## Input Sources
 
-What the alchemist watches to maintain the strategic view:
+What the oracle watches to maintain the strategic view:
 
 | Source | How | What it reveals |
 |--------|-----|----------------|
 | Discord | Channel plugin (real-time on @mention, history on demand) | Human decisions, brainstorms, priorities |
-| Mercury | `mercury read --as alchemist` (on demand, during active handling) | What other Claude sessions are doing |
+| Mercury | `mercury read --as oracle` (on demand, during active handling) | What other Claude sessions are doing |
 | VCS log | `jj log` / `git log` (on demand) | What actually shipped |
 | Studio items | `studio list` / `studio show` | Structured project state |
 | Analytics | MCP query tool (`SELECT` on events table) | What users are doing in Murmur |
@@ -209,33 +209,33 @@ Future sources (not in v1):
 
 Stored at a persistent path (e.g. `/var/lib/damsac-studio/discord-bot-token`). The Claude Code channels plugin reads the token from its own config (set via `/discord:configure`), so no NixOS module changes needed for v1. Proper secrets management (agenix/sops-nix) is a future improvement.
 
-### Alchemist tmux pane
+### Oracle tmux pane
 
-The alchemist pane is not managed by systemd — it's a tmux session that gets started manually or via a helper script. This is intentional: the alchemist is interactive (you can attach and watch it work), and it needs the Claude Code channels plugin which requires an interactive session.
+The oracle pane is not managed by systemd — it's a tmux session that gets started manually or via a helper script. This is intentional: the oracle is interactive (you can attach and watch it work), and it needs the Claude Code channels plugin which requires an interactive session.
 
 Helper script for starting/restarting:
 
 ```bash
-# /srv/damsac/start-alchemist.sh
+# /srv/damsac/start-oracle.sh
 #!/usr/bin/env bash
-tmux new-window -t pair -n alchemist \
+tmux new-window -t pair -n oracle \
   'claude --channels plugin:discord@claude-plugins-official'
 ```
 
 ### Mercury
 
-Already being added to flake.nix + home.nix declaratively. Both users and the alchemist session have access to the `mercury` binary.
+Already being added to flake.nix + home.nix declaratively. Both users and the oracle session have access to the `mercury` binary.
 
 ## Relationship to Other Specs
 
-- **Studio Agent Design** (`studio-agent-design.md`) — The data model, CLI, API endpoints, dashboard, and Murmur integration are unchanged. This spec replaces only the "Cron: Daily Curation" section with the always-on alchemist.
-- **Studio Forge** (`studio-forge-design.md`) — The VPS setup, user accounts, tmux infrastructure, and workspaces are the environment the alchemist runs in. The forge spec still references git; the VPS has since migrated to jj (colocated).
+- **Studio Agent Design** (`studio-agent-design.md`) — The data model, CLI, API endpoints, dashboard, and Murmur integration are unchanged. This spec replaces only the "Cron: Daily Curation" section with the always-on oracle.
+- **Studio Forge** (`studio-forge-design.md`) — The VPS setup, user accounts, tmux infrastructure, and workspaces are the environment the oracle runs in. The forge spec still references git; the VPS has since migrated to jj (colocated).
 
 ## What's Not in v1
 
-- Proactive curation (alchemist acts only when @mentioned or when a human is in the tmux session — no background autonomy yet)
+- Proactive curation (oracle acts only when @mentioned or when a human is in the tmux session — no background autonomy yet)
 - Voice/video channel integration
 - Meeting transcript ingestion
 - Custom Discord slash commands (use @mention for everything initially)
-- Multiple alchemists for different projects (one alchemist covers all damsac work)
+- Multiple oracles for different projects (one oracle covers all damsac work)
 - Automated rekindle (manual gather + restart for now)

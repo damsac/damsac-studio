@@ -4,8 +4,8 @@ let
   # ── Agent launcher script ──────────────────────────────────────────
   # Creates a Discord state dir for a named agent and launches Claude.
   # Usage:
-  #   launch-agent alchemist                     # No Discord channel
-  #   launch-agent alchemist <channel-id>        # With Discord channel
+  #   launch-agent oracle                        # No Discord channel
+  #   launch-agent oracle <channel-id>           # With Discord channel
   #   launch-agent keeper:murmur <channel-id>    # Keeper with channel
   #
   # State dirs live at ~/.claude/channels/discord-<agent-name>/
@@ -17,7 +17,7 @@ let
       echo "Usage: launch-agent <agent-name> [discord-channel-id ...]"
       echo ""
       echo "Examples:"
-      echo "  launch-agent alchemist 123456789"
+      echo "  launch-agent oracle 123456789"
       echo "  launch-agent keeper:murmur 123456789 987654321"
       echo "  launch-agent worker:auth"
       echo ""
@@ -90,7 +90,7 @@ let
     if [[ "$AGENT_NAME" == keeper:* ]]; then
       mercury subscribe --as "$AGENT_NAME" --channel "studio" 2>/dev/null || true
       mercury subscribe --as "$AGENT_NAME" --channel "$AGENT_NAME" 2>/dev/null || true
-    elif [[ "$AGENT_NAME" == "alchemist" ]]; then
+    elif [[ "$AGENT_NAME" == "oracle" ]]; then
       mercury subscribe --as "$AGENT_NAME" --channel "studio" 2>/dev/null || true
     elif [[ "$AGENT_NAME" == worker:* ]]; then
       mercury subscribe --as "$AGENT_NAME" --channel "workers" 2>/dev/null || true

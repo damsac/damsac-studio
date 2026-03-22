@@ -23,7 +23,7 @@ const IDENTITY = process.env.MERCURY_IDENTITY
 if (!IDENTITY) {
   process.stderr.write(
     `mercury channel: MERCURY_IDENTITY required\n` +
-    `  set env var to your agent identity (e.g. "keeper:murmur", "alchemist", "worker:auth")\n`,
+    `  set env var to your agent identity (e.g. "keeper:murmur", "oracle", "worker:auth")\n`,
   )
   process.exit(1)
 }
@@ -122,7 +122,7 @@ function autoSubscribe(): void {
   const parts = IDENTITY!.split(':')
   const role = parts[0]
 
-  if (role === 'alchemist') {
+  if (role === 'oracle') {
     stmtInsertSubscription.run({ $agent: IDENTITY, $channel: 'studio', $created_at: now })
   } else if (role === 'keeper') {
     stmtInsertSubscription.run({ $agent: IDENTITY, $channel: 'studio', $created_at: now })

@@ -53,6 +53,12 @@
   time.timeZone = "UTC";
   i18n.defaultLocale = "en_US.UTF-8";
 
+  # --- Swap ---
+  swapDevices = [{
+    device = "/var/swapfile";
+    size = 2048; # MiB
+  }];
+
   # --- Boot & Filesystem ---
   # Disk layout managed by disko (see disko-config.nix).
   # GRUB with BIOS boot partition — reliable on Hetzner Cloud where

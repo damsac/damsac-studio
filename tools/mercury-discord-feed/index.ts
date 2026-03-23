@@ -122,6 +122,17 @@ function channelColor(channel: string): number {
   return Math.abs(hash) & 0xffffff;
 }
 
+function channelEmoji(channel: string): string {
+  if (channel === "status") return "\u{1F7E2}";        // 🟢
+  if (channel === "studio") return "\u{1F3DB}\u{FE0F}"; // 🏛️
+  if (channel === "workers") return "\u{2692}\u{FE0F}"; // ⚒️
+  if (channel === "oracle") return "\u{1F52E}";         // 🔮
+  if (channel === "keeper:murmur") return "\u{1F4F1}";  // 📱
+  if (channel === "keeper:feedback") return "\u{1F4E5}"; // 📥
+  if (channel.startsWith("keeper:")) return "\u{1F4AC}"; // 💬
+  return "\u{1F4AC}";                                    // 💬
+}
+
 function formatTimestamp(isoString: string): string {
   try {
     const d = new Date(isoString);
@@ -137,10 +148,35 @@ function truncateBody(body: string): string {
   return body.slice(0, MAX) + `\n\n... (truncated, ${body.length} chars total)`;
 }
 
+// Deduplication: track last message body per sender
+const lastMessageBySender: Map<string, string> = new Map();
+
+function isDuplicate(msg: MercuryMessage): boolean {
+  const lastBody = lastMessageBySender.get(msg.sender);
+  if (lastBody === msg.body) {
+    return true;
+  }
+  lastMessageBySender.set(msg.sender, msg.body);
+  return false;
+}
+
+function isCompactStatus(msg: MercuryMessage): boolean {
+  return (
+    msg.channel === "status" &&
+    msg.body.length < 100 &&
+    msg.body.toLowerCase().includes("online")
+  );
+}
+
+function formatCompactStatus(msg: MercuryMessage): string {
+  return `${channelEmoji(msg.channel)} **${msg.sender}** ${msg.body}`;
+}
+
 function formatEmbed(msg: MercuryMessage): EmbedBuilder {
+  const emoji = channelEmoji(msg.channel);
   return new EmbedBuilder()
     .setColor(channelColor(msg.channel))
-    .setTitle(`#${msg.channel}`)
+    .setTitle(`${emoji} #${msg.channel}`)
     .setAuthor({ name: msg.sender })
     .setDescription(truncateBody(msg.body))
     .setFooter({ text: formatTimestamp(msg.created_at) });
@@ -221,7 +257,21 @@ async function main() {
         const messages = pollNewMessages(db, cursor, config.batchLimit);
         for (const msg of messages) {
           try {
-            await feedChannel.send({ embeds: [formatEmbed(msg)] });
+            // Deduplicate: skip if same sender sent exact same body last time
+            if (isDuplicate(msg)) {
+              console.log(
+                `[mercury-feed] Skipping duplicate from ${msg.sender}: "${msg.body.slice(0, 50)}..."`
+              );
+              cursor = msg.id;
+              continue;
+            }
+
+            // Compact status messages (short "online" pings) — plain text, no embed
+            if (isCompactStatus(msg)) {
+              await feedChannel.send(formatCompactStatus(msg));
+            } else {
+              await feedChannel.send({ embeds: [formatEmbed(msg)] });
+            }
             cursor = msg.id;
           } catch (e: any) {
             console.error(

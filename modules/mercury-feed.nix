@@ -13,6 +13,7 @@ in
     install -m 0644 ${feedSrc}/index.ts /var/lib/mercury-discord-feed/index.ts
     install -m 0644 ${feedSrc}/package.json /var/lib/mercury-discord-feed/package.json
     chown -R gudnuf:users /var/lib/mercury-discord-feed
+    cd /var/lib/mercury-discord-feed && ${pkgs.bun}/bin/bun install --no-summary 2>/dev/null || true
   '';
 
   # Mercury Discord feed systemd service

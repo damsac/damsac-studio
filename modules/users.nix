@@ -21,8 +21,7 @@
     shell = pkgs.zsh;
     extraGroups = [ "wheel" "damsac" ];
     openssh.authorizedKeys.keys = [
-      # TODO: Replace with isaac's actual SSH public key
-      "ssh-ed25519 AAAA... isaac"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAKVa8yp0XfEzOByL7hK5dL/TwvWhTfdMwpIaJzliAqD isaac@damsac"
     ];
   };
 

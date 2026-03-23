@@ -318,13 +318,20 @@ in
       install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/.mcp.json /home/''${user}/.claude/plugins/mercury/.mcp.json
       install -m 0644 -o ''${user} -g users ${mercuryPluginSrc}/.claude-plugin/plugin.json /home/''${user}/.claude/plugins/mercury/.claude-plugin/plugin.json
 
-      # Metacraft skills
+      # Metacraft skills — install source under metacraft/, symlink to top level
       for skill in gather genesis lanes-plan lanes-status meta-agent session-lifecycle tmux-lanes; do
         mkdir -p /home/''${user}/.claude/skills/metacraft/$skill
         install -m 0644 -o ''${user} -g users ${metacraftSrc}/$skill/SKILL.md /home/''${user}/.claude/skills/metacraft/$skill/SKILL.md
+        # Claude Code expects skills at .claude/skills/<name>/SKILL.md (not nested under metacraft/)
+        ln -sfn metacraft/$skill /home/''${user}/.claude/skills/$skill
+        chown -h ''${user}:users /home/''${user}/.claude/skills/$skill
       done
       install -m 0644 -o ''${user} -g users ${metacraftSrc}/PHILOSOPHY.md /home/''${user}/.claude/skills/metacraft/PHILOSOPHY.md
     done
+
+    # Workspace-level skills symlink (agents launch from /srv/damsac)
+    mkdir -p ${workspaceDir}/.claude
+    ln -sfn /home/gudnuf/.claude/skills ${workspaceDir}/.claude/skills
   '';
 
 }

@@ -33,12 +33,32 @@ const DB_PATH = join(homedir(), '.local', 'share', 'mercury', 'mercury.db')
 
 // --- Database ---
 
+function validateSchema(database: Database): void {
+  const EXPECTED: Record<string, string[]> = {
+    messages: ['id', 'channel', 'sender', 'body', 'created_at'],
+    subscriptions: ['agent', 'channel', 'created_at'],
+    cursors: ['agent', 'channel', 'last_read_id'],
+  }
+  for (const [table, requiredCols] of Object.entries(EXPECTED)) {
+    const rows = database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    const columns = new Set(rows.map(r => r.name))
+    const missing = requiredCols.filter(c => !columns.has(c))
+    if (missing.length > 0) {
+      throw new Error(
+        `Mercury schema mismatch: ${table} table is missing columns: ${missing.join(', ')}. ` +
+        `See https://github.com/gudnuf/mercury/blob/main/docs/SCHEMA.md`
+      )
+    }
+  }
+}
+
 let db: Database
 
 try {
   db = new Database(DB_PATH)
   db.exec('PRAGMA journal_mode = WAL')
   db.exec('PRAGMA busy_timeout = 5000')
+  validateSchema(db)
 } catch (err) {
   process.stderr.write(`mercury channel: failed to open DB at ${DB_PATH}: ${err}\n`)
   process.exit(1)

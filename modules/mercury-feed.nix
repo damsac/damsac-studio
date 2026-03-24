@@ -1,10 +1,8 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, mercurySrc, ... }:
 
 let
-  feedSrc = builtins.path {
-    path = ../tools/mercury-discord-feed;
-    name = "mercury-discord-feed";
-  };
+  # Use the discord-feed tool from the Mercury flake source (upstream canonical copy)
+  feedSrc = "${mercurySrc}/tools/discord-feed";
 in
 {
   # Copy feed source to a stable location on activation

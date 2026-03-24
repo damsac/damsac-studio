@@ -122,11 +122,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1772609233,
-        "narHash": "sha256-AVXOMIx/0AsZj5dKpddsG5AT6PXYdFoCXKvtLg/2fnM=",
+        "lastModified": 1774396227,
+        "narHash": "sha256-jhKsWb6TKc32fdKwWydfRvEu5EBcFUWPIKPFbBtHyzk=",
         "owner": "gudnuf",
         "repo": "mercury",
-        "rev": "9e95bac97c59f6ec3efc890da24729b0cc0ece55",
+        "rev": "e338a2b5506c96f15c5672452f7e960a123ba1f3",
         "type": "github"
       },
       "original": {

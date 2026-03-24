@@ -82,6 +82,7 @@
       nixosModules.dev = import ./module-dev.nix;
 
       nixosConfigurations.damsac = nixpkgs.lib.nixosSystem {
+        specialArgs = { mercurySrc = mercury; };
         modules = [
           disko.nixosModules.disko
           home-manager.nixosModules.home-manager
@@ -111,6 +112,7 @@
       };
 
       nixosConfigurations.damsac-dev = nixpkgs.lib.nixosSystem {
+        specialArgs = { mercurySrc = mercury; };
         modules = [
           disko.nixosModules.disko
           home-manager.nixosModules.home-manager

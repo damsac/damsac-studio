@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -75,12 +76,54 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_time  ON events (timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_app   ON events (app_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_event ON events (event, timestamp);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
 `
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	_, err := s.db.Exec(schema)
 	return err
+}
+
+// CreateSession inserts a session token into the database.
+func (s *Store) CreateSession(token string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, err := s.db.Exec("INSERT OR REPLACE INTO sessions (token) VALUES (?)", token)
+	return err
+}
+
+// ValidSession checks whether a token exists and is not expired.
+func (s *Store) ValidSession(token string, ttl time.Duration) bool {
+	var createdAt string
+	err := s.db.QueryRow("SELECT created_at FROM sessions WHERE token = ?", token).Scan(&createdAt)
+	if err != nil {
+		return false
+	}
+	t, err := time.Parse("2006-01-02T15:04:05Z", createdAt)
+	if err != nil {
+		return false
+	}
+	return time.Since(t) < ttl
+}
+
+// DeleteSession removes a session token from the database.
+func (s *Store) DeleteSession(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.db.Exec("DELETE FROM sessions WHERE token = ?", token) //nolint:errcheck
+}
+
+// CleanExpiredSessions removes sessions older than the given TTL.
+func (s *Store) CleanExpiredSessions(ttl time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cutoff := time.Now().Add(-ttl).UTC().Format("2006-01-02T15:04:05Z")
+	s.db.Exec("DELETE FROM sessions WHERE created_at < ?", cutoff) //nolint:errcheck
 }
 
 // Event represents a single analytics event for insertion.

@@ -90,7 +90,7 @@ func main() {
 		githubToken: cfg.GitHubToken,
 	}
 
-	sessions := NewSessionStore(24 * time.Hour)
+	sessions := NewSessionStore(store, 24*time.Hour)
 
 	// Determine if we should set Secure flag on cookies.
 	// In dev (no HTTPS), we skip Secure so cookies work on localhost.

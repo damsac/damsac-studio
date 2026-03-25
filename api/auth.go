@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -80,27 +79,21 @@ func writeError(w http.ResponseWriter, status int, message, code string) {
 
 // ---------- Dashboard session auth ----------
 
-// session holds data for a single authenticated dashboard session.
-type session struct {
-	createdAt time.Time
-}
-
-// SessionStore manages in-memory dashboard sessions.
+// SessionStore manages dashboard sessions backed by SQLite.
 type SessionStore struct {
-	mu       sync.RWMutex
-	sessions map[string]session // token -> session
-	ttl      time.Duration
+	store *Store
+	ttl   time.Duration
 }
 
-// NewSessionStore creates a session store with the given TTL.
-func NewSessionStore(ttl time.Duration) *SessionStore {
-	return &SessionStore{
-		sessions: make(map[string]session),
-		ttl:      ttl,
-	}
+// NewSessionStore creates a session store backed by the given SQLite store.
+func NewSessionStore(store *Store, ttl time.Duration) *SessionStore {
+	ss := &SessionStore{store: store, ttl: ttl}
+	// Clean up any expired sessions from previous runs.
+	store.CleanExpiredSessions(ttl)
+	return ss
 }
 
-// Create generates a new session token and stores it.
+// Create generates a new session token and stores it in SQLite.
 func (s *SessionStore) Create() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -108,29 +101,20 @@ func (s *SessionStore) Create() (string, error) {
 	}
 	token := hex.EncodeToString(b)
 
-	s.mu.Lock()
-	s.sessions[token] = session{createdAt: time.Now()}
-	s.mu.Unlock()
-
+	if err := s.store.CreateSession(token); err != nil {
+		return "", err
+	}
 	return token, nil
 }
 
 // Valid checks whether a token corresponds to a non-expired session.
 func (s *SessionStore) Valid(token string) bool {
-	s.mu.RLock()
-	sess, ok := s.sessions[token]
-	s.mu.RUnlock()
-	if !ok {
-		return false
-	}
-	return time.Since(sess.createdAt) < s.ttl
+	return s.store.ValidSession(token, s.ttl)
 }
 
 // Delete removes a session.
 func (s *SessionStore) Delete(token string) {
-	s.mu.Lock()
-	delete(s.sessions, token)
-	s.mu.Unlock()
+	s.store.DeleteSession(token)
 }
 
 const sessionCookieName = "damsac_session"

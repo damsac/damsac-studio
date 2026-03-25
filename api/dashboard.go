@@ -218,10 +218,11 @@ func applyGrouping(views []eventView) {
 
 // DashboardMetrics holds aggregate metrics for the top of the dashboard.
 type DashboardMetrics struct {
-	TotalCost  string
-	TotalUsers int
-	Heatmap    []HeatmapRow
-	Engagement EngagementMetrics
+	TotalCost   string
+	TotalUsers  int
+	CostPerUser string
+	Heatmap     []HeatmapRow
+	Engagement  EngagementMetrics
 }
 
 // EngagementMetrics holds Murmur entry engagement data.
@@ -533,11 +534,19 @@ func (d *DashboardHandler) buildMetrics() DashboardMetrics {
 		log.Printf("dashboard: metrics heatmap: %v", err)
 	}
 
+	var costPerUser string
+	if users > 0 {
+		costPerUser = formatCost(costMicros / int64(users))
+	} else {
+		costPerUser = formatCost(0)
+	}
+
 	return DashboardMetrics{
-		TotalCost:  formatCost(costMicros),
-		TotalUsers: users,
-		Heatmap:    buildHeatmap(tokenData),
-		Engagement: d.buildEngagementMetrics(),
+		TotalCost:   formatCost(costMicros),
+		TotalUsers:  users,
+		CostPerUser: costPerUser,
+		Heatmap:     buildHeatmap(tokenData),
+		Engagement:  d.buildEngagementMetrics(),
 	}
 }
 

@@ -330,6 +330,85 @@ func (s *Store) TokensByDayHour() (map[[2]int]int64, error) {
 	return result, rows.Err()
 }
 
+// CategoryCount holds a category name and its event count.
+type CategoryCount struct {
+	Category string
+	Count    int
+}
+
+// GetEntryViewCount returns the number of entry.detail_viewed events.
+func (s *Store) GetEntryViewCount() (int, error) {
+	var count int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM events WHERE event = 'entry.detail_viewed'
+	`).Scan(&count)
+	return count, err
+}
+
+// GetEntryEditCount returns the number of entry.edited + entry.category_changed events.
+func (s *Store) GetEntryEditCount() (int, error) {
+	var count int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM events
+		WHERE event IN ('entry.edited', 'entry.category_changed')
+	`).Scan(&count)
+	return count, err
+}
+
+// GetAvgTimeToEditMs returns the average timeSinceCreationMs for entry.edited events.
+// Returns 0 if there are no such events.
+func (s *Store) GetAvgTimeToEditMs() (int64, error) {
+	var avg int64
+	err := s.db.QueryRow(`
+		SELECT COALESCE(AVG(CAST(json_extract(properties, '$.timeSinceCreationMs') AS INTEGER)), 0)
+		FROM events
+		WHERE event = 'entry.edited'
+		  AND json_extract(properties, '$.timeSinceCreationMs') IS NOT NULL
+	`).Scan(&avg)
+	return avg, err
+}
+
+// GetTopCategories returns the top N categories by event count across all entry.* events.
+func (s *Store) GetTopCategories(limit int) ([]CategoryCount, error) {
+	rows, err := s.db.Query(`
+		SELECT json_extract(properties, '$.category') AS cat, COUNT(*) AS cnt
+		FROM events
+		WHERE event LIKE 'entry.%'
+		  AND json_extract(properties, '$.category') IS NOT NULL
+		  AND json_extract(properties, '$.category') != ''
+		GROUP BY cat
+		ORDER BY cnt DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []CategoryCount
+	for rows.Next() {
+		var cc CategoryCount
+		if err := rows.Scan(&cc.Category, &cc.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, cc)
+	}
+	return result, rows.Err()
+}
+
+// GetUniqueEntriesEngaged returns the count of distinct entryId values across all entry.* events.
+func (s *Store) GetUniqueEntriesEngaged() (int, error) {
+	var count int
+	err := s.db.QueryRow(`
+		SELECT COUNT(DISTINCT json_extract(properties, '$.entryId'))
+		FROM events
+		WHERE event LIKE 'entry.%'
+		  AND json_extract(properties, '$.entryId') IS NOT NULL
+		  AND json_extract(properties, '$.entryId') != ''
+	`).Scan(&count)
+	return count, err
+}
+
 // Close closes the underlying database connection.
 func (s *Store) Close() error {
 	return s.db.Close()

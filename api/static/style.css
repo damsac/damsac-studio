@@ -133,28 +133,55 @@ main {
     text-align: center;
 }
 
-/* --- Metrics --- */
-.metrics-row {
+/* --- Stats Strip --- */
+.stats-strip {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 0;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 20px;
+    min-width: 0;
+    flex-shrink: 0;
+}
+.stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    font-family: var(--mono);
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+.stat-sep {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin: 0 4px;
+}
+
+/* --- Cards Grid (heatmap + top categories) --- */
+.cards-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr;
+    grid-template-columns: 1fr 1fr;
     gap: 16px;
     margin-bottom: 24px;
-}
-@media (max-width: 800px) {
-    .metrics-row {
-        grid-template-columns: 1fr 1fr;
-    }
-    .metric-card-wide {
-        grid-column: 1 / -1;
-    }
-}
-@media (max-width: 500px) {
-    .metrics-row {
-        grid-template-columns: 1fr 1fr;
-    }
-    .metric-card-wide {
-        grid-column: 1 / -1;
-    }
 }
 .metric-card {
     background: var(--bg-raised);
@@ -164,6 +191,10 @@ main {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+/* If only one card (no categories), span full width */
+.cards-grid .metric-card:only-child {
+    grid-column: 1 / -1;
 }
 .metric-label {
     font-size: 11px;
@@ -225,13 +256,7 @@ main {
     white-space: nowrap;
 }
 
-/* --- Engagement metrics --- */
-.engagement-row {
-    grid-template-columns: repeat(4, 1fr);
-}
-.metric-value-sm {
-    font-size: 24px;
-}
+/* --- Category bars (in cards-grid) --- */
 .category-bars {
     display: flex;
     flex-direction: column;
@@ -259,16 +284,8 @@ main {
     color: var(--text-muted);
 }
 @media (max-width: 800px) {
-    .engagement-row {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-@media (max-width: 500px) {
-    .engagement-row {
-        grid-template-columns: 1fr 1fr;
-    }
-    .metric-value-sm {
-        font-size: 18px;
+    .cards-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -686,10 +703,13 @@ td.user {
     /* Main: reduce padding */
     main { padding: 16px; }
 
-    /* Metrics: tighter padding */
-    .metrics-row { gap: 12px; margin-bottom: 16px; }
+    /* Stats strip: wrap on smaller screens */
+    .stats-strip { padding: 8px 0; }
+    .stat-item { padding: 4px 14px; }
+    .stat-value { font-size: 18px; }
+    .stat-sep { height: 28px; }
+    .cards-grid { gap: 12px; margin-bottom: 16px; }
     .metric-card { padding: 16px; gap: 6px; }
-    .metric-value { font-size: 26px; }
 
     /* Filter bar: tighter */
     .filter-bar { padding: 10px 12px; margin-bottom: 12px; }
@@ -855,11 +875,15 @@ td.user {
     /* Main */
     main { padding: 12px; }
 
-    /* Metrics */
-    .metrics-row { gap: 8px; margin-bottom: 12px; }
+    /* Stats strip */
+    .stats-strip { padding: 6px 0; margin-bottom: 10px; }
+    .stat-item { padding: 3px 10px; }
+    .stat-label { font-size: 9px; }
+    .stat-value { font-size: 16px; }
+    .stat-sep { height: 24px; }
+    .cards-grid { gap: 8px; margin-bottom: 12px; }
     .metric-card { padding: 12px; gap: 4px; }
     .metric-label { font-size: 10px; }
-    .metric-value { font-size: 22px; }
 
     /* Heatmap: keep full width, tighter gaps */
     .hm-day { width: 20px; font-size: 8px; }
@@ -912,11 +936,15 @@ td.user {
     /* Main: minimal padding */
     main { padding: 8px; }
 
-    /* Metrics */
-    .metrics-row { gap: 6px; margin-bottom: 8px; }
+    /* Stats strip */
+    .stats-strip { padding: 4px 0; margin-bottom: 8px; }
+    .stat-item { padding: 2px 8px; }
+    .stat-label { font-size: 8px; }
+    .stat-value { font-size: 14px; }
+    .stat-sep { height: 20px; }
+    .cards-grid { gap: 6px; margin-bottom: 8px; }
     .metric-card { padding: 10px; }
     .metric-label { font-size: 9px; }
-    .metric-value { font-size: 20px; }
 
     /* Heatmap: tighter, keep labels */
     .hm-day { width: 16px; font-size: 7px; }

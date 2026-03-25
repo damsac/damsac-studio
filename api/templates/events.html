@@ -1,14 +1,40 @@
 {{define "content"}}
 <div class="events-page">
+    <div class="stats-strip">
+        <div class="stat">
+            <span class="stat-label">llm cost</span>
+            <span class="stat-value">{{.Metrics.TotalCost}}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">users</span>
+            <span class="stat-value">{{.Metrics.TotalUsers}}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">cost / user</span>
+            <span class="stat-value">{{.Metrics.CostPerUser}}</span>
+        </div>
+        {{if or .Metrics.Engagement.EntryViews .Metrics.Engagement.EntryEdits}}
+        <div class="stat-sep"></div>
+        <div class="stat">
+            <span class="stat-label">views</span>
+            <span class="stat-value">{{.Metrics.Engagement.EntryViews}}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">edits</span>
+            <span class="stat-value">{{.Metrics.Engagement.EntryEdits}}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">time to edit</span>
+            <span class="stat-value">{{.Metrics.Engagement.AvgTimeToEdit}}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">entries</span>
+            <span class="stat-value">{{.Metrics.Engagement.UniqueEntries}}</span>
+        </div>
+        {{end}}
+    </div>
+
     <div class="metrics-row">
-        <div class="metric-card">
-            <span class="metric-label">total llm cost</span>
-            <span class="metric-value">{{.Metrics.TotalCost}}</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-label">total users</span>
-            <span class="metric-value">{{.Metrics.TotalUsers}}</span>
-        </div>
         <div class="metric-card metric-card-wide">
             <span class="metric-label">token usage</span>
             <div class="heatmap">
@@ -33,6 +59,19 @@
                 </div>
             </div>
         </div>
+        {{if .Metrics.Engagement.TopCategories}}
+        <div class="metric-card">
+            <span class="metric-label">top categories</span>
+            <div class="category-bars">
+                {{range .Metrics.Engagement.TopCategories}}
+                <div class="cat-row">
+                    <span class="cat-name">{{.Category}}</span>
+                    <span class="cat-count">{{.Count}}</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
     </div>
 
     <form class="filter-bar" hx-get="/dashboard/events" hx-target="#events-table" hx-push-url="false">

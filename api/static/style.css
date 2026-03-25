@@ -136,21 +136,13 @@ main {
 /* --- Metrics --- */
 .metrics-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr;
+    grid-template-columns: 2fr 1fr;
     gap: 16px;
     margin-bottom: 24px;
 }
 @media (max-width: 800px) {
     .metrics-row {
-        grid-template-columns: 1fr 1fr;
-    }
-    .metric-card-wide {
-        grid-column: 1 / -1;
-    }
-}
-@media (max-width: 500px) {
-    .metrics-row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
     }
     .metric-card-wide {
         grid-column: 1 / -1;
@@ -223,6 +215,70 @@ main {
     font-size: 10px;
     color: var(--text-muted);
     white-space: nowrap;
+}
+
+/* --- Stats strip --- */
+.stats-strip {
+    display: flex;
+    gap: 24px;
+    align-items: baseline;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+.stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    font-family: var(--mono);
+    letter-spacing: -0.02em;
+}
+.stat-sep {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    align-self: center;
+}
+
+/* --- Category bars --- */
+.category-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+.cat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+}
+.cat-row:last-child {
+    border-bottom: none;
+}
+.cat-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+}
+.cat-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 /* --- Filter Bar --- */
@@ -639,6 +695,11 @@ td.user {
     /* Main: reduce padding */
     main { padding: 16px; }
 
+    /* Stats strip: wrap tighter */
+    .stats-strip { gap: 16px; padding: 12px 16px; }
+    .stat-value { font-size: 18px; }
+    .stat-sep { height: 22px; }
+
     /* Metrics: tighter padding */
     .metrics-row { gap: 12px; margin-bottom: 16px; }
     .metric-card { padding: 16px; gap: 6px; }
@@ -807,6 +868,12 @@ td.user {
 
     /* Main */
     main { padding: 12px; }
+
+    /* Stats strip */
+    .stats-strip { gap: 12px; padding: 10px 12px; }
+    .stat-value { font-size: 16px; }
+    .stat-label { font-size: 9px; }
+    .stat-sep { height: 20px; }
 
     /* Metrics */
     .metrics-row { gap: 8px; margin-bottom: 12px; }

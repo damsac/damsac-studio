@@ -220,7 +220,18 @@ func applyGrouping(views []eventView) {
 type DashboardMetrics struct {
 	TotalCost  string
 	TotalUsers int
+	CostPerUser string
 	Heatmap    []HeatmapRow
+	Engagement EngagementMetrics
+}
+
+// EngagementMetrics holds Murmur entry engagement data.
+type EngagementMetrics struct {
+	EntryViews     int
+	EntryEdits     int
+	AvgTimeToEdit  string // human-readable duration
+	UniqueEntries  int
+	TopCategories  []CategoryCount
 }
 
 // HeatmapRow is one row (day) in the token usage heatmap.
@@ -523,10 +534,55 @@ func (d *DashboardHandler) buildMetrics() DashboardMetrics {
 		log.Printf("dashboard: metrics heatmap: %v", err)
 	}
 
+	var costPerUser string
+	if users > 0 {
+		costPerUser = formatCost(costMicros / int64(users))
+	} else {
+		costPerUser = "--"
+	}
+
 	return DashboardMetrics{
-		TotalCost:  formatCost(costMicros),
-		TotalUsers: users,
-		Heatmap:    buildHeatmap(tokenData),
+		TotalCost:   formatCost(costMicros),
+		TotalUsers:  users,
+		CostPerUser: costPerUser,
+		Heatmap:     buildHeatmap(tokenData),
+		Engagement:  d.buildEngagementMetrics(),
+	}
+}
+
+// buildEngagementMetrics fetches Murmur entry engagement data.
+func (d *DashboardHandler) buildEngagementMetrics() EngagementMetrics {
+	views, err := d.store.GetEntryViewCount()
+	if err != nil {
+		log.Printf("dashboard: engagement views: %v", err)
+	}
+
+	edits, err := d.store.GetEntryEditCount()
+	if err != nil {
+		log.Printf("dashboard: engagement edits: %v", err)
+	}
+
+	avgMs, err := d.store.GetAvgTimeToEditMs()
+	if err != nil {
+		log.Printf("dashboard: engagement avg edit time: %v", err)
+	}
+
+	unique, err := d.store.GetUniqueEntriesEngaged()
+	if err != nil {
+		log.Printf("dashboard: engagement unique entries: %v", err)
+	}
+
+	categories, err := d.store.GetTopCategories(5)
+	if err != nil {
+		log.Printf("dashboard: engagement categories: %v", err)
+	}
+
+	return EngagementMetrics{
+		EntryViews:    views,
+		EntryEdits:    edits,
+		AvgTimeToEdit: formatDurationMs(avgMs),
+		UniqueEntries: unique,
+		TopCategories: categories,
 	}
 }
 
@@ -581,6 +637,33 @@ func truncate(s string, max int) string {
 		return s
 	}
 	return s[:max] + "..."
+}
+
+func formatDurationMs(ms int64) string {
+	if ms == 0 {
+		return "--"
+	}
+	d := time.Duration(ms) * time.Millisecond
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		m := int(d.Minutes()) % 60
+		if m == 0 {
+			return fmt.Sprintf("%dh", h)
+		}
+		return fmt.Sprintf("%dh %dm", h, m)
+	default:
+		days := int(d.Hours()) / 24
+		h := int(d.Hours()) % 24
+		if h == 0 {
+			return fmt.Sprintf("%dd", days)
+		}
+		return fmt.Sprintf("%dd %dh", days, h)
+	}
 }
 
 func formatCost(micros int64) string {
